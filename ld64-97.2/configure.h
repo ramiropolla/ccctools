@@ -1,1 +1,0 @@
-#undef LTO_SUPPORT
