@@ -37,5 +37,5 @@ OBJS+= $(CXXFILES:.cpp=.o)
 src/ld64: src/other/PruneTrie.o src/ld/ld.o src/ld/Options.o src/ld/debugline.o src/strlcpy.o
 	$(CXX) -m32 -o $@ $^ $(LDFLAGS)
 
-clean:
+clean distclean:
 	rm -f $(OBJS) $(PRODUCT)

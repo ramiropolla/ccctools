@@ -31,5 +31,5 @@ OBJS = $(CFILES:.c=.o)
 otool: $(OBJS)
 	$(CC) -m32 -o $@ $^ $(LDFLAGS)
 
-clean:
+clean distclean:
 	rm -f $(OBJS) $(PRODUCT)

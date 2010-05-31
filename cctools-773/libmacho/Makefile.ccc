@@ -28,5 +28,5 @@ OBJS = $(CFILES:.c=.o)
 libmacho.a: $(OBJS)
 	$(AR) cru $@ $^
 
-clean:
+clean distclean:
 	rm -f $(OBJS) $(PRODUCT)

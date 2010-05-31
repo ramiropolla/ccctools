@@ -9,6 +9,7 @@
 //#include <sys/attr.h>
 #include <errno.h>
 
+#include "config.h"
 
 int _NSGetExecutablePath(char *buf, unsigned long *bufsize)
 {
@@ -33,24 +34,19 @@ mach_port_t mach_host_self(void)
   return 0;
 }
 
-kern_return_t host_info
-(
- host_t host,
- host_flavor_t flavor,
- host_info_t host_info_out,
- mach_msg_type_number_t *host_info_outCnt
- )
+kern_return_t host_info(host_t host, host_flavor_t flavor,
+                        host_info_t host_info_out,
+                        mach_msg_type_number_t *host_info_outCnt)
 {
-  if(flavor == HOST_BASIC_INFO) {
-    host_basic_info_t      basic_info;
+    if (flavor == HOST_BASIC_INFO) {
+        host_basic_info_t      basic_info;
 
-    basic_info = (host_basic_info_t) host_info_out;
-    memset(basic_info, 0x00, sizeof(*basic_info));
-    basic_info->cpu_type = 12;
-    basic_info->cpu_subtype = 6;
-  }
-
-  return 0;
+        basic_info = (host_basic_info_t) host_info_out;
+        memset(basic_info, 0x00, sizeof(*basic_info));
+        basic_info->cpu_type    = CPU_TYPE_EMULATED;
+        basic_info->cpu_subtype = CPU_SUBTYPE_EMULATED;
+    }
+    return KERN_SUCCESS;
 }
 
 mach_port_t     mach_task_self_ = 0;

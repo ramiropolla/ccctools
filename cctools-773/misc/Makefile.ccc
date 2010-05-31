@@ -38,5 +38,5 @@ ranlib.c: libtool.c
 $(PRODUCTS): %: %.c
 	$(CC) -m32 $(CPPFLAGS) $(CFLAGS) $< -o $@ $(LDFLAGS)
 
-clean:
+clean distclean:
 	rm -f $(PRODUCTS) nmedit.c ranlib.c

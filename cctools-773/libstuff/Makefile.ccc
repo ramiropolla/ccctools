@@ -1,7 +1,7 @@
 include ../../config.mak
 VPATH=${SP}/cctools/libstuff
 
-CFLAGS = -I${SP}/cctools/include
+CFLAGS = -I${SP}/cctools/include -I${BP}
 CFLAGS+= -D__LITTLE_ENDIAN__
 CFLAGS+= -D__private_extern__='__attribute__((visibility("hidden")))'
 CFLAGS+= -D__DARWIN_UNIX03=1
@@ -33,5 +33,5 @@ OBJS = $(CFILES:.c=.o)
 libstuff.a: $(OBJS)
 	$(AR) cru $@ $^
 
-clean:
+clean distclean:
 	rm -f $(OBJS) $(PRODUCT)
