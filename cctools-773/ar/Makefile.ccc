@@ -1,4 +1,7 @@
-CFLAGS = -I../include
+include ../../config.mak
+VPATH=${SP}/cctools/ar
+
+CFLAGS = -I${SP}/cctools/include
 CFLAGS+= -D__LITTLE_ENDIAN__
 CFLAGS+= -D__private_extern__='__attribute__((visibility("hidden")))'
 CFLAGS+= -D__DARWIN_UNIX03=1

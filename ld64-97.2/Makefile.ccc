@@ -1,4 +1,8 @@
-CFLAGS = -I../cctools/include -Isrc/abstraction -Isrc/other -Isrc/ld -Isrc/
+include ../config.mak
+VPATH=${SP}/ld64
+
+CFLAGS = -I${SP}/cctools/include -I${SP}/ld64/src/abstraction
+CFLAGS+= -I${SP}/ld64/src/other -I${SP}/ld64/src/ld -I${SP}/ld64/src/
 CFLAGS+= -D__LITTLE_ENDIAN__
 CFLAGS+= -D__private_extern__='__attribute__((visibility("hidden")))'
 CFLAGS+= -D__DARWIN_UNIX03=1

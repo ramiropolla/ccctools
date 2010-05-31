@@ -1,3 +1,5 @@
+include config.mak
+
 COMPONENTS=cctools/ar cctools/as cctools/ld cctools/libmacho cctools/misc \
 	cctools/otool ld64
 
@@ -14,4 +16,5 @@ clean distclean install:
 	for c in $(COMPONENTS) cctools/libstuff; do           \
 	    (cd $$c && $(MAKE) -f Makefile.ccc $@) || exit 1; \
 	done
+	[ "$@" = "clean" ] && rm -f config.mak || echo
 
