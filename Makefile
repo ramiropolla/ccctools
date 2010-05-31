@@ -14,7 +14,7 @@ $(COMPONENTS) cctools/libstuff:
 
 clean distclean install:
 	for c in $(COMPONENTS) cctools/libstuff; do           \
-	    (cd $$c && $(MAKE) -f Makefile.ccc $@) || exit 1; \
+	    (cd $$c && $(MAKE) -f Makefile.ccc $@ DESTDIR=$(DESTDIR)) || exit 1; \
 	done
 	[ "$@" = "distclean" ] && rm -f config.mak config.h || echo
 

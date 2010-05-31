@@ -15,7 +15,7 @@ CFLAGS+= -D_BSD_SOURCE
 
 LDFLAGS= -L../cctools/libstuff -lstuff -luuid -ldl -lcrypto
 
-PRODUCT=src/ld64
+PRODUCT=ld64
 
 all: $(PRODUCT)
 
@@ -34,8 +34,13 @@ OBJS+= $(CXXFILES:.cpp=.o)
 %.o: %.cpp
 	$(CXX) -m32 $(CPPFLAGS) $(CFLAGS) -c $< -o $@
 
-src/ld64: src/other/PruneTrie.o src/ld/ld.o src/ld/Options.o src/ld/debugline.o src/strlcpy.o
+ld64: src/other/PruneTrie.o src/ld/ld.o src/ld/Options.o src/ld/debugline.o src/strlcpy.o
 	$(CXX) -m32 -o $@ $^ $(LDFLAGS)
 
 clean distclean:
 	rm -f $(OBJS) $(PRODUCT)
+
+install:
+	mkdir -p $(DESTDIR)$(PREFIX)/bin
+	cp $(PRODUCT) $(DESTDIR)$(PREFIX)/bin/$(TARGET)-$(PRODUCT)
+

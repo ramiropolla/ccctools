@@ -30,3 +30,8 @@ libmacho.a: $(OBJS)
 
 clean distclean:
 	rm -f $(OBJS) $(PRODUCT)
+
+install:
+	mkdir -p $(DESTDIR)$(PREFIX)/lib
+	cp $(PRODUCT) $(DESTDIR)$(PREFIX)/lib/$(PRODUCT)
+

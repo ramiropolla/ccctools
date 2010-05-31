@@ -35,3 +35,8 @@ ld: $(OBJS)
 
 clean distclean:
 	rm -f $(OBJS) $(PRODUCT)
+
+install:
+	mkdir -p $(DESTDIR)$(PREFIX)/bin
+	cp $(PRODUCT) $(DESTDIR)$(PREFIX)/bin/$(TARGET)-$(PRODUCT)
+

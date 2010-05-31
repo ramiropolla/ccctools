@@ -40,3 +40,9 @@ $(PRODUCTS): %: %.c
 
 clean distclean:
 	rm -f $(PRODUCTS) nmedit.c ranlib.c
+
+install:
+	mkdir -p $(DESTDIR)$(PREFIX)/bin
+	for PRODUCT in $(PRODUCTS); do                                \
+	    cp $$PRODUCT $(DESTDIR)$(PREFIX)/bin/$(TARGET)-$$PRODUCT; \
+	done

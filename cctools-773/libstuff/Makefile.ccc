@@ -35,3 +35,6 @@ libstuff.a: $(OBJS)
 
 clean distclean:
 	rm -f $(OBJS) $(PRODUCT)
+
+install:
+
