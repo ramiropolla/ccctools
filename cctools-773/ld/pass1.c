@@ -508,7 +508,7 @@ enum bool force_weak)
 	    pass1_object(file_name, file_addr, file_size, base_name, FALSE,
 			 FALSE, bundle_loader, force_weak);
 	}
-#ifdef VM_SYNC_DEACTIVATE
+#if 0
 	vm_msync(mach_task_self(), (vm_address_t)file_addr,
 		 (vm_size_t)file_size, VM_SYNC_DEACTIVATE);
 #endif /* VM_SYNC_DEACTIVATE */
@@ -1390,7 +1390,7 @@ down:
 	    if(ranlibs[i].ran_off % sizeof(short) != 0){
 		error("malformed table of contents in: %s (ranlib struct %lu "
 		      "library member offset not a multiple of %lu bytes, can't"
-		      " load from it)", file_name, i, sizeof(short));
+		      " load from it)", file_name, i, (long unsigned int) sizeof(short));
 		return;
 	    }
 #else

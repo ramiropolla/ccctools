@@ -22,6 +22,7 @@
  * @APPLE_LICENSE_HEADER_END@
  */
 
+#include <stdarg.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <sys/mman.h>
@@ -30,7 +31,7 @@
 
 #include "MachOReaderRelocatable.hpp"
 
-#define LTO_SUPPORT 1
+//#define LTO_SUPPORT 1
 
 #if LTO_SUPPORT
 	#include "LTOReader.hpp"

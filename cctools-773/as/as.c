@@ -80,8 +80,6 @@ struct directory_stack include_defaults[] = {
 struct directory_stack *include = NULL;	/* First dir to search */
 static struct directory_stack *include_tail = NULL;	/* Last in chain */
 
-/* apple_version is in apple_version.c which is created by the Makefile */
-extern char apple_version[];
 /* this is only used here, thus defined here (was in version.c in GAS) */
 static char version_string[] = "GNU assembler version 1.38\n";
 
@@ -223,7 +221,6 @@ char **envp)
 		    break;
 
 		case 'v':
-		    fprintf(stderr,"Apple Inc version %s, ", apple_version);
 		    fprintf(stderr, "%s", version_string);
 		    if(*arg && strcmp(arg,"ersion"))
 			as_fatal("Unknown -v option ignored");

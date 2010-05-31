@@ -83,8 +83,8 @@ vm_size_t size)
 	return(KERN_SUCCESS);
 #endif
 #ifdef __i386__
-	asm("jmp 1f");
-	asm("1: nop");
+	__asm("jmp 1f");
+	__asm("1: nop");
 	return(KERN_SUCCESS);
 #endif
 }

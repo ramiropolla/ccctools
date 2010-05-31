@@ -1,0 +1,39 @@
+CFLAGS = -I../include -I.
+CFLAGS+= -D__LITTLE_ENDIAN__
+CFLAGS+= -D__private_extern__='__attribute__((visibility("hidden")))'
+CFLAGS+= -D__DARWIN_UNIX03=1
+CFLAGS+= -std=c99
+CFLAGS+= -D_XOPEN_SOURCE=600
+CFLAGS+= -Wno-deprecated-declarations
+CFLAGS+= -D_ISOC99_SOURCE
+CFLAGS+= -D_POSIX_C_SOURCE=200112
+CFLAGS+= -fno-builtin-round -fno-builtin-trunc
+CFLAGS+= -D_BSD_SOURCE
+
+CFLAGS+= -DNeXT_MOD
+CFLAGS+= -DI386 -Di486 -Di586 -Di686
+
+LDFLAGS= -L../libstuff -lstuff
+
+PRODUCTS=lipo size strings nm libtool checksyms indr strip nmedit segedit \
+	cmpdylib pagestuff redo_prebinding seg_addr_table check_dylib \
+	seg_hack install_name_tool codesign_allocate ranlib
+
+all: $(PRODUCTS)
+
+%.o: %.c
+	$(CC) -m32 $(CPPFLAGS) $(CFLAGS) -c $< -o $@
+
+nmedit.c: nm.c
+	echo "#define NMEDIT" > $@
+	cat $^ >> $@
+
+ranlib.c: libtool.c
+	echo "#define RANLIB" > $@
+	cat $^ >> $@
+
+$(PRODUCTS): %: %.c
+	$(CC) -m32 $(CPPFLAGS) $(CFLAGS) $< -o $@ $(LDFLAGS)
+
+clean:
+	rm -f $(PRODUCTS) nmedit.c ranlib.c

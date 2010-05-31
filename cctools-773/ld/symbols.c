@@ -3562,8 +3562,8 @@ hash_instrument(void)
 	print("Number of merged_symbol_lists = %lu (containing %d pointers "
 	      "each)\n", n, SYMBOL_LIST_HASH_SIZE);
 	print("sizeof(struct merged_symbol_list) is %lu (total %lu)\n",
-	      sizeof(struct merged_symbol_list),
-	      n * sizeof(struct merged_symbol_list));
+	      (long unsigned int) sizeof(struct merged_symbol_list),
+	      n * (long unsigned int) sizeof(struct merged_symbol_list));
 	print("Number of used pointers in the lists = %lu (%.2f%%)\n",
 	      u, ((double)u) / ((double)(SYMBOL_LIST_HASH_SIZE * n)) *
 		    100.0);
@@ -3587,9 +3587,9 @@ hash_instrument(void)
 	}
 	print("The SYMBOL_LIST_HASH_SIZE is %d\n", SYMBOL_LIST_HASH_SIZE);
 	print("sizeof(struct merged_symbol_root) is %lu\n",
-	      sizeof(struct merged_symbol_root));
+	      (long unsigned int) sizeof(struct merged_symbol_root));
 	print("Number of additional chunks: %lu (size of these %lu)\n", c,
-	      c * sizeof(struct merged_symbol_chunk));
+	      c * (long unsigned int) sizeof(struct merged_symbol_chunk));
 	print("Number of hash entries used: %lu (%.2f%%) average #buckets "
 	      "%.2f\n", h, ((double)h)/ ((double)SYMBOL_LIST_HASH_SIZE) * 100.0,
 	      ((double)b) / ((double)h) );
@@ -4568,8 +4568,8 @@ mark_globals_live(void)
 		    if(only_referenced_dynamically == TRUE)
 			continue;
 		}
-#ifdef DEBUG
 mark_it_live:
+#ifdef DEBUG
 		if(((debug & (1 << 25)) || (debug & (1 << 26)))){
 		    print("** In mark_globals_live() ");
 		    if(merged_symbol->nlist.n_desc & N_NO_DEAD_STRIP)

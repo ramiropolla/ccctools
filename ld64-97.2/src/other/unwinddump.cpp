@@ -193,7 +193,6 @@ bool UnwindPrinter<arm>::validFile(const uint8_t* fileContent)
 	return false;
 }
 
-
 template <typename A>
 UnwindPrinter<A>::UnwindPrinter(const uint8_t* fileContent, uint32_t fileLength, const char* path)
  : fHeader(NULL), fLength(fileLength), fUnwindSection(NULL),

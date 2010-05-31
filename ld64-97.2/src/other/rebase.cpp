@@ -27,6 +27,7 @@
 #include <sys/mman.h>
 #include <mach/mach.h>
 #include <limits.h>
+#include <stdlib.h>
 #include <stdarg.h>
 #include <stdio.h>
 #include <fcntl.h>
@@ -769,7 +770,7 @@ static void copyFile(const char* srcFile, const char* dstFile)
 		throwf("can't create temp file %s, errnor=%d", dstFile, errno);
 
 	// mark source as "don't cache"
-	(void)fcntl(src, F_NOCACHE, 1);
+//	(void)fcntl(src, F_NOCACHE, 1);
 	// we want to cache the dst because we are about to map it in and modify it
 	
 	// copy permission bits

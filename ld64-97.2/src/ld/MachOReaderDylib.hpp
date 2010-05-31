@@ -39,6 +39,7 @@
 #include "MachOFileAbstraction.hpp"
 #include "MachOTrie.hpp"
 #include "ObjectFile.h"
+#include "Options.h"
 
 //
 //
@@ -146,7 +147,7 @@ public:
 	virtual const char*								getFromTargetName() const	{ return NULL; }
 	virtual uint64_t								getFromTargetOffset() const { return 0; }
 	virtual void									setTarget(ObjectFile::Atom& atom, uint64_t offset) { fTarget = &atom; }
-	virtual void									setFromTarget(ObjectFile::Atom&) { throw "can't set from target"; }
+	virtual void									setFromTarget(ObjectFile::Atom&) { throwf("can't set from target"); }
 	virtual const char*								getDescription() const		{ return "dylib import reference"; }
 
 private:
@@ -336,7 +337,7 @@ Reader<A>::Reader(const uint8_t* fileContent, uint64_t fileLength, const char* p
 {
 	// sanity check
 	if ( ! validFile(fileContent, dylibOptions.fBundleLoader) )
-		throw "not a valid mach-o object file";
+		throwf("not a valid mach-o object file");
 
 	fPath = strdup(path);
 	
@@ -508,9 +509,9 @@ Reader<A>::Reader(const uint8_t* fileContent, uint64_t fileLength, const char* p
 	if ( (fDylibInstallPath == NULL) && ((header->filetype() == MH_DYLIB) || (header->filetype() == MH_DYLIB_STUB)) ) 
 		throwf("dylib %s missing LC_ID_DYLIB load command", path);
 	if ( symbolTable == NULL )
-		throw "binary missing LC_SYMTAB load command";
+		throwf("binary missing LC_SYMTAB load command");
 	if ( dynamicInfo == NULL )
-		throw "binary missing LC_DYSYMTAB load command";
+		throwf("binary missing LC_DYSYMTAB load command");
 	
 	// if linking flat and this is a flat dylib, create one atom that references all imported symbols
 	if ( fLinkingFlat && fLinkingMainExecutable && ((header->flags() & MH_TWOLEVEL) == 0) ) {
@@ -922,12 +923,12 @@ bool Reader<ppc>::validFile(const uint8_t* fileContent, bool executableOrDylibor
 			if ( executableOrDyliborBundle )
 				return true;
 			else
-				throw "can't link with bundle (MH_BUNDLE) only dylibs (MH_DYLIB)";
+				throwf("can't link with bundle (MH_BUNDLE) only dylibs (MH_DYLIB)");
 		case MH_EXECUTE:
 			if ( executableOrDyliborBundle )
 				return true;
 			else
-				throw "can't link with a main executable";
+				throwf("can't link with a main executable");
 		default:
 			return false;
 	}
@@ -949,12 +950,12 @@ bool Reader<ppc64>::validFile(const uint8_t* fileContent, bool executableOrDylib
 			if ( executableOrDyliborBundle )
 				return true;
 			else
-				throw "can't link with bundle (MH_BUNDLE) only dylibs (MH_DYLIB)";
+				throwf("can't link with bundle (MH_BUNDLE) only dylibs (MH_DYLIB)");
 		case MH_EXECUTE:
 			if ( executableOrDyliborBundle )
 				return true;
 			else
-				throw "can't link with a main executable";
+				throwf("can't link with a main executable");
 		default:
 			return false;
 	}
@@ -976,12 +977,12 @@ bool Reader<x86>::validFile(const uint8_t* fileContent, bool executableOrDylibor
 			if ( executableOrDyliborBundle )
 				return true;
 			else
-				throw "can't link with bundle (MH_BUNDLE) only dylibs (MH_DYLIB)";
+				throwf("can't link with bundle (MH_BUNDLE) only dylibs (MH_DYLIB)");
 		case MH_EXECUTE:
 			if ( executableOrDyliborBundle )
 				return true;
 			else
-				throw "can't link with a main executable";
+				throwf("can't link with a main executable");
 		default:
 			return false;
 	}
@@ -1003,12 +1004,12 @@ bool Reader<x86_64>::validFile(const uint8_t* fileContent, bool executableOrDyli
 			if ( executableOrDyliborBundle )
 				return true;
 			else
-				throw "can't link with bundle (MH_BUNDLE) only dylibs (MH_DYLIB)";
+				throwf("can't link with bundle (MH_BUNDLE) only dylibs (MH_DYLIB)");
 		case MH_EXECUTE:
 			if ( executableOrDyliborBundle )
 				return true;
 			else
-				throw "can't link with a main executable";
+				throwf("can't link with a main executable");
 		default:
 			return false;
 	}
@@ -1030,12 +1031,12 @@ bool Reader<arm>::validFile(const uint8_t* fileContent, bool executableOrDylibor
 			if ( executableOrDyliborBundle )
 				return true;
 			else
-				throw "can't link with bundle (MH_BUNDLE) only dylibs (MH_DYLIB)";
+				throwf("can't link with bundle (MH_BUNDLE) only dylibs (MH_DYLIB)");
 		case MH_EXECUTE:
 			if ( executableOrDyliborBundle )
 				return true;
 			else
-				throw "can't link with a main executable";
+				throwf("can't link with a main executable");
 		default:
 			return false;
 	}

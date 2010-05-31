@@ -309,9 +309,6 @@ static uint32_t trunc(
     uint32_t v,
     uint32_t r);
 
-/* apple_version is in vers.c which is created by the Makefile */
-extern char apple_version[];
-
 int
 main(
 int argc,
@@ -345,8 +342,9 @@ char **envp)
 	    p++;
 	else
 	    p = argv[0];
-	if(strncmp(p, "ranlib", sizeof("ranlib") - 1) == 0)
-	    cmd_flags.ranlib = TRUE;
+	if ((i = strlen(p)) >= sizeof("ranlib") - 1 &&
+			strcmp(p + (i - (sizeof("ranlib") - 1)), "ranlib") == 0)
+		cmd_flags.ranlib = TRUE;
 
 	/* The default is to used long names */
 	cmd_flags.use_long_names = TRUE;
@@ -982,8 +980,6 @@ char **envp)
 			    cmd_flags.verbose= TRUE;
 			    break;
 			case 'V':
-			    printf("Apple Computer, Inc. version %s\n",
-				   apple_version);
 			    Vflag = TRUE;
 			    break;
 			case 't':
@@ -2410,7 +2406,7 @@ char *output)
 		}
 		memcpy(p, arch->members[j].object_addr,
 		       arch->members[j].object_size);
-#ifdef VM_SYNC_DEACTIVATE
+#if 0
 		vm_msync(mach_task_self(),
 			 (vm_address_t)arch->members[j].object_addr,
 			 (vm_size_t)arch->members[j].object_size,

@@ -171,7 +171,7 @@ process_section_specs(void)
 			   sizeof(s.segname)) == 0)
 		    error("segment names: %s and %s not unique to %lu "
 			  "characters\n", segment_specs[i].segname,
-			  segment_specs[j].segname, sizeof(s.segname));
+			  segment_specs[j].segname, (long unsigned int) sizeof(s.segname));
 	    }
 	    for(j = 0; j < segment_specs[i].nsection_specs; j++){
 		for(k = j + 1; k < segment_specs[i].nsection_specs; k++){
@@ -182,7 +182,7 @@ process_section_specs(void)
 			  "to %lu characters\n",
 			  segment_specs[i].section_specs[j].sectname,
 			  segment_specs[i].section_specs[k].sectname,
-			  segment_specs[i].segname, sizeof(s.segname));
+			  segment_specs[i].segname, (long unsigned int) sizeof(s.segname));
 		}
 	    }
 	}

@@ -31,7 +31,6 @@
 #include "stdio.h"
 #include "string.h"
 #include "mach-o/loader.h"
-#include "objc/objc-runtime.h"
 #include "stuff/allocate.h"
 #include "stuff/bytesex.h"
 #include "stuff/symbol.h"
@@ -632,6 +631,7 @@ print_objc_class:
 			printf("\n");
 		    printf("\t\t      isa 0x%08x", objc_class.isa);
 
+#if 0
 		    if(verbose && CLS_GETINFO(&objc_class, CLS_META)){
 			p = get_pointer(objc_class.isa, &left, objc_sections,
 					nobjc_sections, &cstring_section);
@@ -641,6 +641,7 @@ print_objc_class:
 			    printf(" (not in an " SEG_OBJC " section)\n");
 		    }
 		    else
+#endif
 			printf("\n");
 
 		    printf("\t      super_class 0x%08x",objc_class.super_class);
@@ -670,6 +671,7 @@ print_objc_class:
 			   (unsigned int)objc_class.version);
 		    printf("\t\t     info 0x%08x",
 			   (unsigned int)objc_class.info);
+#if 0
 		    if(verbose){
 			if(CLS_GETINFO(&objc_class, CLS_CLASS))
 			    printf(" CLS_CLASS\n");
@@ -679,6 +681,7 @@ print_objc_class:
 			    printf("\n");
 		    }
 		    else
+#endif
 			printf("\n");
 		    printf("\t    instance_size 0x%08x\n",
 			   (unsigned int)objc_class.instance_size);
@@ -763,6 +766,7 @@ print_objc_class:
 			host_byte_sex, swapped, verbose) == FALSE)
 			printf(" (not in an " SEG_OBJC " section)\n");
 
+#if 0
 		    if(CLS_GETINFO((&objc_class), CLS_CLASS)){
 			printf("\tMeta Class");
 			if(get_objc_class((uint32_t)objc_class.isa,
@@ -774,6 +778,7 @@ print_objc_class:
 			    printf(" (not in " SECT_OBJC_SYMBOLS
 				   " section)\n");
 		    }
+#endif
 		}
 		else
 		    printf("\tdefs[%u] 0x%08x (not in an " SEG_OBJC

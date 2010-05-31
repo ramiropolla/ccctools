@@ -1,0 +1,37 @@
+CFLAGS = -I../../cctools/include -Iabstraction -Iother -Ild -I.
+CFLAGS+= -D__LITTLE_ENDIAN__
+CFLAGS+= -D__private_extern__='__attribute__((visibility("hidden")))'
+CFLAGS+= -D__DARWIN_UNIX03=1
+CFLAGS+= -D_XOPEN_SOURCE=600
+CFLAGS+= -Wno-deprecated-declarations
+CFLAGS+= -D_ISOC99_SOURCE
+CFLAGS+= -D_POSIX_C_SOURCE=200112
+CFLAGS+= -fno-builtin-round -fno-builtin-trunc
+CFLAGS+= -D_BSD_SOURCE
+
+LDFLAGS= -L../../cctools/libstuff -lstuff -luuid -ldl -lcrypto
+
+PRODUCT=ld64
+
+all: $(PRODUCT)
+
+CFILES = ld/debugline.c strlcpy.c
+
+CXXFILES = ld/ld.cpp ld/Options.cpp \
+	other/PruneTrie.cpp other/ObjectDump.cpp \
+	other/dyldinfo.cpp other/rebase.cpp other/unwinddump.cpp \
+
+OBJS = $(CFILES:.c=.o)
+OBJS+= $(CXXFILES:.cpp=.o)
+
+%.o: %.c
+	$(CC) -m32 $(CPPFLAGS) $(CFLAGS) -c $< -o $@
+
+%.o: %.cpp
+	$(CXX) -m32 $(CPPFLAGS) $(CFLAGS) -c $< -o $@
+
+ld64: other/PruneTrie.o ld/ld.o ld/Options.o ld/debugline.o strlcpy.o
+	$(CXX) -m32 -o $@ $^ $(LDFLAGS)
+
+clean:
+	rm -f $(OBJS) $(PRODUCT)

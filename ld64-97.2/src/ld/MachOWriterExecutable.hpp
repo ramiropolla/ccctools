@@ -25,14 +25,26 @@
 #ifndef __EXECUTABLE_MACH_O__
 #define __EXECUTABLE_MACH_O__
 
+#include "strlcpy.h"
+#include <signal.h>
+
 #include <stdint.h>
 #include <stddef.h>
 #include <fcntl.h>
 #include <sys/time.h>
 #include <uuid/uuid.h>
 #include <mach/i386/thread_status.h>
+#undef MACHINE_THREAD_STATE     /* need to undef these to avoid warnings */
+#undef MACHINE_THREAD_STATE_COUNT
+#undef THREAD_STATE_NONE
+#undef VALID_THREAD_STATE_FLAVOR
 #include <mach/ppc/thread_status.h>
-#include <CommonCrypto/CommonDigest.h>
+#undef MACHINE_THREAD_STATE     /* need to undef these to avoid warnings */
+#undef MACHINE_THREAD_STATE_COUNT
+#undef THREAD_STATE_NONE
+#undef VALID_THREAD_STATE_FLAVOR
+//#include <CommonCrypto/CommonDigest.h>
+#include <openssl/md5.h>
 
 #include <vector>
 #include <algorithm>
@@ -586,7 +598,7 @@ public:
 	virtual uint32_t						getOrdinal() const				{ return 0; }
 	virtual std::vector<ObjectFile::LineInfo>*	getLineInfo() const			{ return NULL; }
 	virtual ObjectFile::Alignment			getAlignment() const			{ return ObjectFile::Alignment(2); }
-	virtual void							copyRawContent(uint8_t buffer[]) const { throw "don't use copyRawContent"; }
+	virtual void							copyRawContent(uint8_t buffer[]) const { throwf("don't use copyRawContent"); }
 	virtual void							setScope(Scope)					{ }
 
 
@@ -1777,12 +1789,12 @@ ClassicStubHelperAtom<x86_64>::ClassicStubHelperAtom(Writer<x86_64>& writer, Obj
 	fReferences.push_back(new WriterReference<x86_64>(3, x86_64::kPCRel32, &fLazyPointerAtom));
 	if ( forLazyDylib ) {
 		if ( fWriter.fDyldLazyDylibHelper == NULL )
-			throw "symbol dyld_lazy_dylib_stub_binding_helper not defined (usually in lazydylib1.o)";
+			throwf("symbol dyld_lazy_dylib_stub_binding_helper not defined (usually in lazydylib1.o)");
 		fReferences.push_back(new WriterReference<x86_64>(8, x86_64::kPCRel32, fWriter.fDyldLazyDylibHelper));
 	}
 	else {
 		if ( fWriter.fDyldClassicHelperAtom == NULL )
-			throw "symbol dyld_stub_binding_helper not defined (usually in crt1.o/dylib1.o/bundle1.o)";
+			throwf("symbol dyld_stub_binding_helper not defined (usually in crt1.o/dylib1.o/bundle1.o)");
 		fReferences.push_back(new WriterReference<x86_64>(8, x86_64::kPCRel32, fWriter.fDyldClassicHelperAtom));
 	}
 }
@@ -1853,7 +1865,7 @@ HybridStubHelperHelperAtom<x86_64>::HybridStubHelperHelperAtom(Writer<x86_64>& w
 	: WriterAtom<x86_64>(writer, Segment::fgTextSegment)
 {
 	if ( writer.fDyldClassicHelperAtom == NULL )
-		throw "symbol dyld_stub_binding_helper not defined (usually in crt1.o/dylib1.o/bundle1.o)";
+		throwf("symbol dyld_stub_binding_helper not defined (usually in crt1.o/dylib1.o/bundle1.o)");
 	fReferences.push_back(new WriterReference<x86_64>(3, x86_64::kPCRel32_1, writer.fFastStubGOTAtom));
 	fReferences.push_back(new WriterReference<x86_64>(13, x86_64::kPCRel32, new NonLazyPointerAtom<x86_64>(writer)));
 	fReferences.push_back(new WriterReference<x86_64>(21, x86_64::kPCRel32, writer.fFastStubGOTAtom));
@@ -2093,7 +2105,7 @@ HybridStubHelperHelperAtom<x86>::HybridStubHelperHelperAtom(Writer<x86>& writer)
 	: WriterAtom<x86>(writer, Segment::fgTextSegment)
 {
 	if ( writer.fDyldClassicHelperAtom == NULL )
-		throw "symbol dyld_stub_binding_helper not defined (usually in crt1.o/dylib1.o/bundle1.o)";
+		throwf("symbol dyld_stub_binding_helper not defined (usually in crt1.o/dylib1.o/bundle1.o)");
 	fReferences.push_back(new WriterReference<x86>(2,  x86::kAbsolute32, writer.fFastStubGOTAtom));
 	fReferences.push_back(new WriterReference<x86>(18, x86::kPCRel32, writer.fDyldClassicHelperAtom));
 	fReferences.push_back(new WriterReference<x86>(26, x86::kAbsolute32, new NonLazyPointerAtom<x86>(writer)));
@@ -2157,12 +2169,12 @@ ClassicStubHelperAtom<x86>::ClassicStubHelperAtom(Writer<x86>& writer, ObjectFil
 	fReferences.push_back(new WriterReference<x86>(1, x86::kAbsolute32, &fLazyPointerAtom));
 	if ( forLazyDylib ) {
 		if ( fWriter.fDyldLazyDylibHelper == NULL )
-			throw "symbol dyld_lazy_dylib_stub_binding_helper not defined (usually in lazydylib1.o)";
+			throwf("symbol dyld_lazy_dylib_stub_binding_helper not defined (usually in lazydylib1.o)");
 		fReferences.push_back(new WriterReference<x86>(6, x86::kPCRel32, fWriter.fDyldLazyDylibHelper));
 	}
 	else {
 		if ( fWriter.fDyldClassicHelperAtom == NULL )
-			throw "symbol dyld_stub_binding_helper not defined (usually in crt1.o/dylib1.o/bundle1.o)";
+			throwf("symbol dyld_stub_binding_helper not defined (usually in crt1.o/dylib1.o/bundle1.o)");
 		fReferences.push_back(new WriterReference<x86>(6, x86::kPCRel32, fWriter.fDyldClassicHelperAtom));
 	}
 }
@@ -2371,7 +2383,7 @@ LazyPointerAtom<arm>::LazyPointerAtom(Writer<arm>& writer, ObjectFile::Atom& tar
 	ObjectFile::Atom* helper;
 	if ( forLazyDylib ) {
 		if ( writer.fDyldLazyDylibHelper == NULL )
-			throw "symbol dyld_lazy_dylib_stub_binding_helper not defined (usually in lazydylib1.o)";
+			throwf("symbol dyld_lazy_dylib_stub_binding_helper not defined (usually in lazydylib1.o)");
 		helper = writer.fDyldLazyDylibHelper;
 	}
 	else if ( writer.fOptions.makeCompressedDyldInfo() ) {
@@ -2382,7 +2394,7 @@ LazyPointerAtom<arm>::LazyPointerAtom(Writer<arm>& writer, ObjectFile::Atom& tar
 	}
 	else {
 		if ( writer.fDyldClassicHelperAtom == NULL )
-			throw "symbol dyld_stub_binding_helper not defined (usually in crt1.o/dylib1.o/bundle1.o)";
+			throwf("symbol dyld_stub_binding_helper not defined (usually in crt1.o/dylib1.o/bundle1.o)");
 		helper = writer.fDyldClassicHelperAtom;
 	}
 	fReferences.push_back(new WriterReference<arm>(0, arm::kPointer, helper));
@@ -2492,12 +2504,12 @@ StubAtom<ppc>::StubAtom(Writer<ppc>& writer, ObjectFile::Atom& target, bool forL
 		// for non-prebound ppc, lazy pointer starts out pointing to dyld_stub_binding_helper glue code
 		if ( forLazyDylib ) {
 			if ( writer.fDyldLazyDylibHelper == NULL )
-				throw "symbol dyld_lazy_dylib_stub_binding_helper not defined (usually in lazydylib1.o)";
+				throwf("symbol dyld_lazy_dylib_stub_binding_helper not defined (usually in lazydylib1.o)");
 			lp = new LazyPointerAtom<ppc>(writer, *writer.fDyldLazyDylibHelper, *this, forLazyDylib);
 		}
 		else {
 			if ( writer.fDyldClassicHelperAtom == NULL )
-				throw "symbol dyld_stub_binding_helper not defined (usually in crt1.o/dylib1.o/bundle1.o)";
+				throwf("symbol dyld_stub_binding_helper not defined (usually in crt1.o/dylib1.o/bundle1.o)");
 			lp = new LazyPointerAtom<ppc>(writer, *writer.fDyldClassicHelperAtom, *this, forLazyDylib);
 		}
 	}
@@ -2523,12 +2535,12 @@ StubAtom<ppc64>::StubAtom(Writer<ppc64>& writer, ObjectFile::Atom& target, bool 
 	LazyPointerAtom<ppc64>* lp;
 	if ( forLazyDylib ) {
 		if ( writer.fDyldLazyDylibHelper == NULL )
-			throw "symbol dyld_lazy_dylib_stub_binding_helper not defined (usually in lazydylib1.o)";
+			throwf("symbol dyld_lazy_dylib_stub_binding_helper not defined (usually in lazydylib1.o)");
 		lp = new LazyPointerAtom<ppc64>(writer, *writer.fDyldLazyDylibHelper, *this, forLazyDylib);
 	}
 	else {
 		if ( writer.fDyldClassicHelperAtom == NULL )
-			throw "symbol dyld_stub_binding_helper not defined (usually in crt1.o/dylib1.o/bundle1.o)";
+			throwf("symbol dyld_stub_binding_helper not defined (usually in crt1.o/dylib1.o/bundle1.o)");
 		lp = new LazyPointerAtom<ppc64>(writer, *writer.fDyldClassicHelperAtom, *this, forLazyDylib);
 	}
 	if ( fWriter.fSlideable || ((fWriter.fPageZeroAtom != NULL) && (fWriter.fPageZeroAtom->getSize() > 4096)) )
@@ -2611,7 +2623,7 @@ StubAtom<arm>::StubAtom(Writer<arm>& writer, ObjectFile::Atom& target, bool forL
 			fReferences.push_back(new WriterReference<arm>(0, arm::kPointerDiff12, lp, 0, this, 8));
 			break;
 		default:
-			throw "internal error";
+			throwf("internal error");
 	}
 }
 
@@ -2650,7 +2662,7 @@ uint64_t StubAtom<arm>::getSize() const
 		case kStubShort:
 			return 4;
 		default:
-			throw "internal error";
+			throwf("internal error");
 	}
 }
 
@@ -2663,7 +2675,7 @@ uint64_t StubAtom<x86>::getSize() const
 		case kJumpTable:
 			return 5;
 		default:
-			throw "internal error";
+			throwf("internal error");
 	}
 }
 
@@ -2682,7 +2694,7 @@ ObjectFile::Alignment StubAtom<x86>::getAlignment() const
 		case kJumpTable:
 			return 0; // special case x86 self-modifying stubs to be byte aligned
 		default:
-			throw "internal error";
+			throwf("internal error");
 	}
 }
 
@@ -2759,7 +2771,7 @@ void StubAtom<x86>::copyRawContent(uint8_t buffer[]) const
 			}
 			break;
 		default:
-			throw "internal error";
+			throwf("internal error");
 	}
 }
 
@@ -2793,7 +2805,7 @@ void StubAtom<arm>::copyRawContent(uint8_t buffer[]) const
 			OSWriteLittleInt32(&buffer[ 0], 0, 0xE59FF000);// 	ldr	pc, [pc, #foo$lazy_ptr]
 			break;
 		default:
-			throw "internal error";
+			throwf("internal error");
 	}
 }
 
@@ -2827,7 +2839,7 @@ const char*	StubAtom<arm>::getSectionName() const
 		case kStubShort:
 			return "__symbolstub1";
 		default:
-			throw "internal error";
+			throwf("internal error");
 	}
 }
 
@@ -2840,7 +2852,7 @@ const char*	StubAtom<x86>::getSectionName() const
 		case kJumpTable:
 			return "__jump_table";
 		default:
-			throw "internal error";
+			throwf("internal error");
 	}
 }
 
@@ -3221,7 +3233,7 @@ uint8_t Writer<A>::ordinalForLibrary(ObjectFile::Reader* lib)
 	if ( pos != fLibraryToOrdinal.end() )
 		return pos->second;
 
-	throw "can't find ordinal for imported symbol";
+	throwf("can't find ordinal for imported symbol");
 }
 
 template <typename A>
@@ -3266,14 +3278,14 @@ int Writer<A>::compressedOrdinalForImortedAtom(ObjectFile::Atom* target)
 			}
 			break;
 		case ObjectFile::Atom::kWeakDefinition:
-			throw "compressedOrdinalForImortedAtom() should not have been called on a weak definition";
+			throwf("compressedOrdinalForImortedAtom() should not have been called on a weak definition");
 		case ObjectFile::Atom::kAbsoluteSymbol:
 		case ObjectFile::Atom::kRegularDefinition:
 		case ObjectFile::Atom::kTentativeDefinition:
 			return BIND_SPECIAL_DYLIB_SELF;
 	}	
 
-	throw "can't find ordinal for imported symbol";
+	throwf("can't find ordinal for imported symbol");
 }
 
 
@@ -3369,7 +3381,7 @@ uint64_t Writer<A>::write(std::vector<class ObjectFile::Atom*>& atoms,
 	} catch (...) {
 		// clean up if any errors
 		(void)unlink(fFilePath);
-		throw;
+		throwf("nothing");
 	}
 }
 
@@ -4148,13 +4160,13 @@ uint32_t Writer<x86_64>::addObjectRelocs(ObjectFile::Atom* atom, ObjectFile::Ref
 			return 1;
 			
 		case x86_64::kPointerDiff24:
-			throw "internal linker error, kPointerDiff24 can't be encoded into object files";
+			throwf("internal linker error, kPointerDiff24 can't be encoded into object files");
 
 		case x86_64::kImageOffset32:
-			throw "internal linker error, kImageOffset32 can't be encoded into object files";
+			throwf("internal linker error, kImageOffset32 can't be encoded into object files");
 
 		case x86_64::kSectionOffset24:
-			throw "internal linker error, kSectionOffset24 can't be encoded into object files";
+			throwf("internal linker error, kSectionOffset24 can't be encoded into object files");
 
 		case x86_64::kDtraceTypeReference:
 		case x86_64::kDtraceProbe:
@@ -4273,13 +4285,13 @@ uint32_t Writer<x86>::addObjectRelocs(ObjectFile::Atom* atom, ObjectFile::Refere
 			return 1;
 			
 		case x86::kPointerDiff24:
-			throw "internal linker error, kPointerDiff24 can't be encoded into object files";
+			throwf("internal linker error, kPointerDiff24 can't be encoded into object files");
 
 		case x86::kImageOffset32:
-			throw "internal linker error, kImageOffset32 can't be encoded into object files";
+			throwf("internal linker error, kImageOffset32 can't be encoded into object files");
 			
 		case x86::kSectionOffset24:
-			throw "internal linker error, kSectionOffset24 can't be encoded into object files";
+			throwf("internal linker error, kSectionOffset24 can't be encoded into object files");
 
 		case x86::kDtraceTypeReference:
 		case x86::kDtraceProbe:
@@ -4412,7 +4424,7 @@ uint32_t Writer<arm>::addObjectRelocs(ObjectFile::Atom* atom, ObjectFile::Refere
 			return 1;
 
 		case arm::kPointerDiff12:
-			throw "internal error.  no reloc for 12-bit pointer diffs";
+			throwf("internal error.  no reloc for 12-bit pointer diffs");
 
 		case arm::kDtraceTypeReference:
 		case arm::kDtraceProbe:
@@ -5148,7 +5160,6 @@ bool Writer<arm>::generatesLocalTextReloc(const ObjectFile::Reference& ref, cons
 	return false;
 }
 
-
 template <>
 bool Writer<x86_64>::generatesLocalTextReloc(const ObjectFile::Reference&, const ObjectFile::Atom& atom, SectionInfo* curSection)
 {
@@ -5364,9 +5375,9 @@ uint64_t Writer<ppc64>::relocAddressInFinalLinkedImage(uint64_t address, const O
 
 
 template <> bool    Writer<ppc>::preboundLazyPointerType(uint8_t* type) { *type = PPC_RELOC_PB_LA_PTR; return true; }
-template <> bool  Writer<ppc64>::preboundLazyPointerType(uint8_t* type) { throw "prebinding not supported"; }
+template <> bool  Writer<ppc64>::preboundLazyPointerType(uint8_t* type) { throwf("prebinding not supported"); }
 template <> bool    Writer<x86>::preboundLazyPointerType(uint8_t* type) { *type = GENERIC_RELOC_PB_LA_PTR; return true; }
-template <> bool Writer<x86_64>::preboundLazyPointerType(uint8_t* type) { throw "prebinding not supported"; }
+template <> bool Writer<x86_64>::preboundLazyPointerType(uint8_t* type) { throwf("prebinding not supported"); }
 template <> bool    Writer<arm>::preboundLazyPointerType(uint8_t* type) { *type = ARM_RELOC_PB_LA_PTR; return true; }
 
 template <typename A>
@@ -5814,7 +5825,7 @@ bool Writer<A>::segmentsCanSplitApart(const ObjectFile::Atom& from, const Object
 			return ( (from.getSegment().isContentExecutable() != to.getSegment().isContentExecutable())
 					|| (from.getSegment().isContentWritable() != to.getSegment().isContentWritable()) );
 	}
-	throw "ld64 internal error";
+	throwf("ld64 internal error");
 }
 
 
@@ -6169,19 +6180,19 @@ uint64_t Writer<A>::writeAtoms()
 
 		// update content based UUID
 		if ( fOptions.getUUIDMode() == Options::kUUIDContent ) {
-			uint8_t digest[CC_MD5_DIGEST_LENGTH];
+			uint8_t digest[MD5_DIGEST_LENGTH];
 			if ( streaming ) {
 				// if output file file did not fit in memory, re-read file to generate md5 hash
 				uint32_t kMD5BufferSize = 16*1024;
 				uint8_t* md5Buffer = (uint8_t*)::malloc(kMD5BufferSize);
 				if ( md5Buffer != NULL ) {
-					CC_MD5_CTX md5State;
-					CC_MD5_Init(&md5State);
+					MD5_CTX md5State;
+					MD5_Init(&md5State);
 					::lseek(fd, 0, SEEK_SET);
 					ssize_t len;
 					while ( (len = ::read(fd, md5Buffer, kMD5BufferSize)) > 0 ) 
-						CC_MD5_Update(&md5State, md5Buffer, len);
-					CC_MD5_Final(digest, &md5State);
+						MD5_Update(&md5State, md5Buffer, len);
+					MD5_Final(digest, &md5State);
 					::free(md5Buffer);
 				}
 				else {
@@ -6197,10 +6208,10 @@ uint64_t Writer<A>::writeAtoms()
 				// if output file fit in memory, just genrate an md5 hash in memory
 			#if 1
 				// temp hack for building on Tiger
-				CC_MD5_CTX md5State;
-				CC_MD5_Init(&md5State);
-				CC_MD5_Update(&md5State, wholeBuffer, size);
-				CC_MD5_Final(digest, &md5State);
+				MD5_CTX md5State;
+				MD5_Init(&md5State);
+				MD5_Update(&md5State, wholeBuffer, size);
+				MD5_Final(digest, &md5State);
 			#else
 				CC_MD5(wholeBuffer, size, digest);
 			#endif
@@ -6213,7 +6224,7 @@ uint64_t Writer<A>::writeAtoms()
 	catch (...) {
 		if ( sCleanupFile != NULL ) 
 			::unlink(sCleanupFile);
-		throw;
+		throwf("nothing");
 	}
 	
 	// finish up
@@ -6770,7 +6781,7 @@ void Writer<arm>::fixUpReferenceRelocatable(const ObjectFile::Reference* ref, co
 			// nothing to fix up
 			break;
 		case arm::kPointerDiff12:
-			throw "internal error.  no reloc for 12-bit pointer diffs";
+			throwf("internal error.  no reloc for 12-bit pointer diffs");
 	}
 }
 
@@ -6888,7 +6899,7 @@ void Writer<x86>::fixUpReferenceFinal(const ObjectFile::Reference* ref, const Ob
 					break;
 				case ObjectFile::Atom::kExternalDefinition:
 				case ObjectFile::Atom::kExternalWeakDefinition:
-					throw "codegen problem, can't use rel32 to external symbol";
+					throwf("codegen problem, can't use rel32 to external symbol");
 				case ObjectFile::Atom::kTentativeDefinition:
 					displacement = 0;
 					break;
@@ -7044,11 +7055,11 @@ void Writer<x86>::fixUpReferenceRelocatable(const ObjectFile::Reference* ref, co
 			}
 			break;
 		case x86::kPointerDiff24:
-			throw "internal linker error, kPointerDiff24 can't be encoded into object files";
+			throwf("internal linker error, kPointerDiff24 can't be encoded into object files");
 		case x86::kImageOffset32:
-			throw "internal linker error, kImageOffset32 can't be encoded into object files";
+			throwf("internal linker error, kImageOffset32 can't be encoded into object files");
 		case x86::kSectionOffset24:
-			throw "internal linker error, kSectionOffset24 can't be encoded into object files";
+			throwf("internal linker error, kSectionOffset24 can't be encoded into object files");
 		case x86::kDtraceProbe:
 		case x86::kDtraceTypeReference:
 			// nothing to fix up
@@ -7120,7 +7131,7 @@ void Writer<x86_64>::fixUpReferenceFinal(const ObjectFile::Reference* ref, const
 						case Options::kDynamicExecutable:
 							// <rdar://problem/5855588> allow x86_64 main executables to use 32-bit pointers if program loads in load 2GB
 							if ( (displacement > twoGigLimit) || (displacement < (-twoGigLimit)) )
-								throw "32-bit pointer out of range";
+								throwf("32-bit pointer out of range");
 							break;
 						case Options::kStaticExecutable:
 							// <rdar://problem/5855588> allow x86_64 mach_kernel to truncate pointers
@@ -7133,7 +7144,7 @@ void Writer<x86_64>::fixUpReferenceFinal(const ObjectFile::Reference* ref, const
 		case x86_64::kPointerDiff32:
 			displacement = (ref->getTarget().getAddress() + ref->getTargetOffset()) - (ref->getFromTarget().getAddress() + ref->getFromTargetOffset());
 			if ( (displacement > twoGigLimit) || (displacement < (-twoGigLimit)) )
-				throw "32-bit pointer difference out of range";
+				throwf("32-bit pointer difference out of range");
 			LittleEndian::set32(*((uint32_t*)fixUp), (uint32_t)displacement);
 			break;
 		case x86_64::kPointerDiff:
@@ -7165,7 +7176,7 @@ void Writer<x86_64>::fixUpReferenceFinal(const ObjectFile::Reference* ref, const
 				//fprintf(stderr, "GOT for %s optimized away\n", ref->getTarget().getDisplayName());
 				uint8_t* opcodes = (uint8_t*)fixUp;
 				if ( opcodes[-2] != 0x8B )
-					throw "GOT load reloc does not point to a movq instruction";
+					throwf("GOT load reloc does not point to a movq instruction");
 				opcodes[-2] = 0x8D;
 			}
 			// fall into general rel32 case
@@ -7213,7 +7224,7 @@ void Writer<x86_64>::fixUpReferenceFinal(const ObjectFile::Reference* ref, const
 				if ( (displacement > 127) || (displacement < (-128)) ) {
 					fprintf(stderr, "branch out of range from %s (%llX) in %s to %s (%llX) in %s\n", 
 						inAtom->getDisplayName(), inAtom->getAddress(), inAtom->getFile()->getPath(), ref->getTarget().getDisplayName(), ref->getTarget().getAddress(), ref->getTarget().getFile()->getPath());
-					throw "rel8 out of range";
+					throwf("rel8 out of range");
 				}
 				*((int8_t*)fixUp) = (int8_t)displacement;
 			}
@@ -7221,7 +7232,7 @@ void Writer<x86_64>::fixUpReferenceFinal(const ObjectFile::Reference* ref, const
 				if ( (displacement > twoGigLimit) || (displacement < (-twoGigLimit)) ) {
 					fprintf(stderr, "reference out of range from %s (%llX) in %s to %s (%llX) in %s\n", 
 						inAtom->getDisplayName(), inAtom->getAddress(), inAtom->getFile()->getPath(), ref->getTarget().getDisplayName(), ref->getTarget().getAddress(), ref->getTarget().getFile()->getPath());
-					throw "rel32 out of range";
+					throwf("rel32 out of range");
 				}
 				LittleEndian::set32(*((uint32_t*)fixUp), (int32_t)displacement);
 			}
@@ -7343,7 +7354,7 @@ void Writer<x86_64>::fixUpReferenceRelocatable(const ObjectFile::Reference* ref,
 			}
 			if ( (displacement > twoGigLimit) || (displacement < (-twoGigLimit)) ) {
 				//fprintf(stderr, "call out of range from %s in %s to %s in %s\n", this->getDisplayName(), this->getFile()->getPath(), target.getDisplayName(), target.getFile()->getPath());
-				throw "rel32 out of range";
+				throwf("rel32 out of range");
 			}
 			LittleEndian::set32(*((uint32_t*)fixUp), (int32_t)displacement);
 			break;
@@ -7360,7 +7371,7 @@ void Writer<x86_64>::fixUpReferenceRelocatable(const ObjectFile::Reference* ref,
 			}
 			if ( (displacement > 127) || (displacement < (-128)) ) {
 				//fprintf(stderr, "call out of range from %s in %s to %s in %s\n", this->getDisplayName(), this->getFile()->getPath(), target.getDisplayName(), target.getFile()->getPath());
-				throw "rel8 out of range";
+				throwf("rel8 out of range");
 			}
 			*((int8_t*)fixUp) = (int8_t)displacement;
 			break;
@@ -7372,11 +7383,11 @@ void Writer<x86_64>::fixUpReferenceRelocatable(const ObjectFile::Reference* ref,
 			LittleEndian::set32(*((uint32_t*)fixUp), (uint32_t)(ref->getTargetOffset()));
 			break;
 		case x86_64::kPointerDiff24:
-			throw "internal linker error, kPointerDiff24 can't be encoded into object files";
+			throwf("internal linker error, kPointerDiff24 can't be encoded into object files");
 		case x86_64::kImageOffset32:
-			throw "internal linker error, kImageOffset32 can't be encoded into object files";
+			throwf("internal linker error, kImageOffset32 can't be encoded into object files");
 		case x86_64::kSectionOffset24:
-			throw "internal linker error, kSectionOffset24 can't be encoded into object files";
+			throwf("internal linker error, kSectionOffset24 can't be encoded into object files");
 		case x86_64::kDtraceTypeReference:
 		case x86_64::kDtraceProbe:
 			// nothing to fix up
@@ -7592,7 +7603,7 @@ void Writer<A>::fixUpReference_powerpc(const ObjectFile::Reference* ref, const O
 			picBaseAddr = ref->getFromTarget().getAddress() + ref->getFromTargetOffset();
 			displacement = targetAddr - picBaseAddr;
 			if ( (displacement > picbase_twoGigLimit) || (displacement < (-picbase_twoGigLimit)) )
-				throw "32-bit pic-base out of range";
+				throwf("32-bit pic-base out of range");
 			instructionLowHalf = (displacement & 0xFFFF);
 			instruction = BigEndian::get32(*fixUp);
 			newInstruction = (instruction & 0xFFFF0000) | instructionLowHalf;
@@ -7602,7 +7613,7 @@ void Writer<A>::fixUpReference_powerpc(const ObjectFile::Reference* ref, const O
 			picBaseAddr = ref->getFromTarget().getAddress() + ref->getFromTargetOffset();
 			displacement = targetAddr - picBaseAddr;
 			if ( (displacement > picbase_twoGigLimit) || (displacement < (-picbase_twoGigLimit)) )
-				throw "32-bit pic-base out of range";
+				throwf("32-bit pic-base out of range");
 			if ( (displacement & 0x3) != 0 )
 				throwf("bad offset (0x%08X) for lo14 instruction pic-base fix-up", (uint32_t)displacement);
 			instructionLowHalf = (displacement & 0xFFFC);
@@ -7614,7 +7625,7 @@ void Writer<A>::fixUpReference_powerpc(const ObjectFile::Reference* ref, const O
 			picBaseAddr = ref->getFromTarget().getAddress() + ref->getFromTargetOffset();
 			displacement = targetAddr - picBaseAddr;
 			if ( (displacement > picbase_twoGigLimit) || (displacement < (-picbase_twoGigLimit)) )
-				throw "32-bit pic-base out of range";
+				throwf("32-bit pic-base out of range");
 			instructionLowHalf = displacement >> 16;
 			if ( (displacement & 0x00008000) != 0 )
 				++instructionLowHalf;
@@ -7634,7 +7645,7 @@ void Writer<A>::fixUpReference_powerpc(const ObjectFile::Reference* ref, const O
 			if ( relocateableExternal && !finalLinkedImage )
 				targetAddr -= ref->getTarget().getAddress();
 			if ( (targetAddr & 0x3) != 0 )
-				throw "bad address for absolute lo14 instruction fix-up";
+				throwf("bad address for absolute lo14 instruction fix-up");
 			instructionLowHalf = (targetAddr & 0xFFFF);
 			instruction = BigEndian::get32(*fixUp);
 			newInstruction = (instruction & 0xFFFF0003) | instructionLowHalf;
@@ -8014,7 +8025,6 @@ void Writer<A>::optimizeDylibReferences()
 	//}
 }
 
-
 template <>
 void Writer<arm>::scanForAbsoluteReferences()
 {
@@ -8290,7 +8300,7 @@ void Writer<A>::synthesizeStubs(const std::vector<class ObjectFile::Atom*>& exis
 							// just-in-time, create GOT slot to dyld_stub_binder
 							if ( fOptions.makeCompressedDyldInfo() && (fFastStubGOTAtom == NULL) ) {
 								if ( fDyldCompressedHelperAtom == NULL )
-									throw "missing symbol dyld_stub_binder";
+									throwf("missing symbol dyld_stub_binder");
 								fFastStubGOTAtom = new NonLazyPointerAtom<A>(*this, *fDyldCompressedHelperAtom);
 							}
 							stub = new StubAtom<A>(*this, target, forLazyDylib);
@@ -9287,7 +9297,7 @@ ObjectFile::Atom::Scope MachHeaderAtom<A>::getScope() const
 		case Options::kKextBundle:
 			return ObjectFile::Atom::scopeLinkageUnit;
 	}
-	throw "unknown header type";
+	throwf("unknown header type");
 }
 
 template <typename A>
@@ -9307,7 +9317,7 @@ ObjectFile::Atom::SymbolTableInclusion MachHeaderAtom<A>::getSymbolTableInclusio
 		case Options::kKextBundle:
 			return ObjectFile::Atom::kSymbolTableNotIn;
 	}
-	throw "unknown header type";
+	throwf("unknown header type");
 }
 
 template <typename A>
@@ -9328,7 +9338,7 @@ const char* MachHeaderAtom<A>::getName() const
 		case Options::kDyld:
 			return "__mh_dylinker_header";
 	}
-	throw "unknown header type";
+	throwf("unknown header type");
 }
 
 template <typename A>
@@ -9346,7 +9356,7 @@ const char* MachHeaderAtom<A>::getDisplayName() const
 		case Options::kKextBundle:
 			return "mach header";
 	}
-	throw "unknown header type";
+	throwf("unknown header type");
 }
 
 template <typename A>
@@ -10528,7 +10538,7 @@ void UnwindInfoAtom<A>::generate()
 		// build personality index, update encodings with personality index
 		this->makePersonalityIndex(uniqueInfos);
 		if ( fPersonalityIndexMap.size() > 3 )
-			throw "too many personality routines for compact unwind to encode";
+			throwf("too many personality routines for compact unwind to encode");
 		
 		// put the most common encodings into the common table, but at most 127 of them
 		std::map<uint32_t, unsigned int> commonEncodings;
@@ -10544,7 +10554,7 @@ void UnwindInfoAtom<A>::generate()
 		fPagesContentForDelete = (uint8_t*)calloc(pageCount,4096);
 		fPagesSize = 0;
 		if ( fPagesContentForDelete == NULL )
-			throw "could not allocate space for compact unwind info";
+			throwf("could not allocate space for compact unwind info");
 		ObjectFile::Atom* secondLevelFirstFuncs[pageCount*3];
 		uint8_t* secondLevelPagesStarts[pageCount*3];
 		
@@ -11157,7 +11167,7 @@ uint64_t BranchIslandAtom<arm>::getSize() const
 		case kBranchIslandNoPicToThumb1:
 			return 8;
 	};
-	throw "internal error: no ARM branch island kind";
+	throwf("internal error: no ARM branch island kind");
 }
 
 
@@ -11208,7 +11218,7 @@ void SegmentSplitInfoContentAtom<A>::uleb128EncodeAddresses(const std::vector<Se
 		//fprintf(stderr, "\t0x%0llX\n", (uint64_t)nextAddr);
 		uint64_t delta = nextAddr - addr;
 		if ( delta == 0 ) 
-			throw "double split seg info for same address";
+			throwf("double split seg info for same address");
 		// uleb128 encode
 		uint8_t byte;
 		do {
@@ -11307,9 +11317,9 @@ void ObjCInfoAtom<A>::copyRawContent(uint8_t buffer[]) const
 // objc info section is in a different segment and section for 32 vs 64 bit runtimes
 template <> const char* ObjCInfoAtom<ppc>::getSectionName()    const { return "__image_info"; }
 template <> const char* ObjCInfoAtom<x86>::getSectionName()    const { return "__image_info"; }
-template <> const char* ObjCInfoAtom<arm>::getSectionName()    const { return "__objc_imageinfo"; }
 template <> const char* ObjCInfoAtom<ppc64>::getSectionName()  const { return "__objc_imageinfo"; }
 template <> const char* ObjCInfoAtom<x86_64>::getSectionName() const { return "__objc_imageinfo"; }
+template <> const char* ObjCInfoAtom<arm>::getSectionName()    const { return "__objc_imageinfo"; }
 
 template <> Segment& ObjCInfoAtom<ppc>::getInfoSegment()    const { return Segment::fgObjCSegment; }
 template <> Segment& ObjCInfoAtom<x86>::getInfoSegment()    const { return Segment::fgObjCSegment; }

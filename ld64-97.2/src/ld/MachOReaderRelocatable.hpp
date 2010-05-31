@@ -25,6 +25,10 @@
 #ifndef __OBJECT_FILE_MACH_O__
 #define __OBJECT_FILE_MACH_O__
 
+#include "strlcpy.h"
+#include <signal.h>
+#include <stdio.h>
+
 #include <stdint.h>
 #include <math.h>
 #include <unistd.h>
@@ -40,9 +44,7 @@
 #include "dwarf2.h"
 #include "debugline.h"
 
-#include <libunwind/DwarfInstructions.hpp>
-#include <libunwind/AddressSpace.hpp>
-#include <libunwind/Registers.hpp>
+//#include <libunwind.hpp>
 
 //
 //
@@ -292,13 +294,17 @@ public:
 	virtual bool								isAlias() const { return false; }
 	virtual uint8_t								getLSDAReferenceKind() const { return 0; }
 	virtual uint8_t								getPersonalityReferenceKind() const { return 0; }
+#if LIBUNWIND_IMPLEMENTED
 	virtual uint32_t							getCompactUnwindEncoding(uint64_t ehAtomAddress) { return 0; }
+#endif
 	virtual ObjectFile::UnwindInfo::iterator	beginUnwind()					{ return fHasCompactUnwindInfo ? &fSingleUnwindInfo[0] : NULL; }
 	virtual ObjectFile::UnwindInfo::iterator	endUnwind()						{ return fHasCompactUnwindInfo ? &fSingleUnwindInfo[1] : NULL; }
 	virtual ObjectFile::Reference*				getLSDA();
 	virtual ObjectFile::Reference*				getFDE();
 	virtual Atom*								getPersonalityPointer();
+#if LIBUNWIND_IMPLEMENTED
 	virtual void								setCompactUnwindEncoding(uint64_t ehAtomAddress);
+#endif
 
 	uint32_t									fStabsStartIndex;
 	uint32_t									fStabsCount;
@@ -350,13 +356,13 @@ ObjectFile::Atom* BaseAtom::getPersonalityPointer()
 	return NULL;
 }
 
-
+#if LIBUNWIND_IMPLEMENTED
 void BaseAtom::setCompactUnwindEncoding(uint64_t ehAtomAddress)
 {
 	fSingleUnwindInfo[0].unwindInfo = this->getCompactUnwindEncoding(ehAtomAddress);
 	fHasCompactUnwindInfo = true;
 }
-
+#endif
 
 class BaseAtomSorter
 {
@@ -477,7 +483,9 @@ public:
 	virtual unsigned int						getSectionIndex() const			{ return 1 + (fSection - fOwner.fSectionsStart); }
 	virtual uint8_t								getLSDAReferenceKind() const;
 	virtual uint8_t								getPersonalityReferenceKind() const;
+#if LIBUNWIND_IMPLEMENTED
 	virtual uint32_t							getCompactUnwindEncoding(uint64_t ehAtomAddress);
+#endif
 
 protected:
 	typedef typename A::P						P;
@@ -819,9 +827,9 @@ public:
 	virtual void								copyRawContent(uint8_t buffer[]) const;
 	virtual void								setScope(ObjectFile::Atom::Scope newScope)		{ fScope = newScope; }
 	virtual void								setSize(uint64_t size)			{ }
-	virtual void								addReference(ObjectFile::Reference* ref) { throw "ld: can't add references"; }
+	virtual void								addReference(ObjectFile::Reference* ref) { throwf("ld: can't add references"); }
 	virtual void								sortReferences() { }
-	virtual void								addLineInfo(const  ObjectFile::LineInfo& info)	{ throw "ld: can't add line info to tentative definition"; }
+	virtual void								addLineInfo(const  ObjectFile::LineInfo& info)	{ throwf("ld: can't add line info to tentative definition"); }
 	virtual const ObjectFile::ReaderOptions&	getOptions() const				{ return fOwner.fOptions; }
 	virtual uint64_t							getObjectAddress() const		{ return ULLONG_MAX; }
 	virtual const void*							getSectionRecord() const		{ return NULL; }
@@ -948,7 +956,9 @@ public:
 	void										resolveName();
 	virtual uint8_t								getLSDAReferenceKind() const;
 	virtual uint8_t								getPersonalityReferenceKind() const;
+#if LIBUNWIND_IMPLEMENTED
 	virtual uint32_t							getCompactUnwindEncoding(uint64_t ehAtomAddress);
+#endif
 	
 protected:
 	typedef typename A::P						P;
@@ -1350,6 +1360,7 @@ void AnonymousAtom<A>::resolveName()
 			}
 		}
 	}
+#if LIBUNWIND_IMPLEMENTED
 	else if ( fSection == fOwner.fehFrameSection ) {
 		// give name to FDE
 		ObjectFile::Atom* funcAtom = fOwner.getFunctionAtomFromFDEAddress(fAddress);
@@ -1372,6 +1383,7 @@ void AnonymousAtom<A>::resolveName()
 		else
 			asprintf((char**)&fSynthesizedName, "objc-class-ref-to-%s", targetName);
 	}
+#endif
 }
 
 
@@ -1508,9 +1520,9 @@ public:
 	virtual void								copyRawContent(uint8_t buffer[]) const	{ }
 	virtual void								setScope(ObjectFile::Atom::Scope newScope)		{ fScope = newScope; }
 	virtual void								setSize(uint64_t size)			{ }
-	virtual void								addReference(ObjectFile::Reference* ref) { throw "ld: can't add references"; }
+	virtual void								addReference(ObjectFile::Reference* ref) { throwf("ld: can't add references"); }
 	virtual void								sortReferences()				{ }
-	virtual void								addLineInfo(const  ObjectFile::LineInfo& info)	{ throw "ld: can't add line info to tentative definition"; }
+	virtual void								addLineInfo(const  ObjectFile::LineInfo& info)	{ throwf("ld: can't add line info to tentative definition"); }
 	virtual const ObjectFile::ReaderOptions&	getOptions() const				{ return fOwner.fOptions; }
 	virtual uint64_t							getObjectAddress() const		{ return fSymbol->n_value(); }
 	virtual void								setSectionOffset(uint64_t offset) { /* don't let fSectionOffset be altered*/ }
@@ -1790,6 +1802,7 @@ typename A::P::uint_t ObjectFileAddressSpace<A>::getP(pint_t logicalAddr)
 	return P::getP(*((pint_t*)mappedAddress(logicalAddr, &relocTarget))) + relocTarget;
 }
 
+#if LIBUNWIND_IMPLEMENTED
 template <typename A>
 uint64_t ObjectFileAddressSpace<A>::getULEB128(pint_t& logicalAddr, pint_t end)
 {
@@ -1811,8 +1824,7 @@ int64_t ObjectFileAddressSpace<A>::getSLEB128(pint_t& logicalAddr, pint_t end)
 	logicalAddr += (laddr-sladdr);
 	return result;
 }
-
-
+#endif
 
 
 
@@ -1848,8 +1860,10 @@ private:
 	//typedef typename std::vector<Atom<A>*>		AtomVector;
 	//typedef typename AtomVector::iterator		AtomVectorIterator;	// seems to help C++ parser
 	typedef typename A::ReferenceKinds			Kinds;
+#if LIBUNWIND_IMPLEMENTED
 	typedef typename libunwind::CFI_Parser<ObjectFileAddressSpace<A> >::FDE_Atom_Info  FDE_Atom_Info;
 	typedef typename libunwind::CFI_Parser<ObjectFileAddressSpace<A> >::CIE_Atom_Info  CIE_Atom_Info;
+#endif
 	typedef class ObjectFileAddressSpace<A>	OAS;
 	friend class ObjectFileAddressSpace<A>;
 	friend class AnonymousAtom<A>;
@@ -1920,8 +1934,10 @@ private:
 	const char*									fDwarfTranslationUnitFile;
 	std::map<uint32_t,const char*>				fDwarfIndexToFile;
 	std::vector<Stab>							fStabs;
+#if LIBUNWIND_IMPLEMENTED
 	std::vector<FDE_Atom_Info>					fFDEInfos;
 	std::vector<CIE_Atom_Info>					fCIEInfos;
+#endif
 	bool										fAppleObjc;
 	bool										fHasDTraceProbes;
 	bool										fHaveIndirectSymbols;
@@ -1947,7 +1963,7 @@ Reader<A>::Reader(const uint8_t* fileContent, const char* path, time_t modTime, 
 {
 	// sanity check
 	if ( ! validFile(fileContent, false, 0) )
-		throw "not a valid mach-o object file";
+		throwf("not a valid mach-o object file");
 
 	Reference<A>::fgForFinalLinkedImage = options.fForFinalLinkedImage;
 
@@ -2010,7 +2026,8 @@ Reader<A>::Reader(const uint8_t* fileContent, const char* path, time_t modTime, 
 
 	// inital guess for number of atoms
 	fAtoms.reserve(fSymbolCount);
-
+    
+#if LIBUNWIND_IMPLEMENTED
 	// if there is an __eh_frame section, decode it into chunks to get atoms in that
 	// section as well as division points for functions in __text
 	for (const macho_section<P>* sect=fSectionsStart; sect < fSectionsEnd; ++sect) {
@@ -2069,6 +2086,7 @@ Reader<A>::Reader(const uint8_t* fileContent, const char* path, time_t modTime, 
 			}
 		}
 	}
+#endif
 
 
 	// add all atoms that have entries in symbol table
@@ -2196,6 +2214,7 @@ Reader<A>::Reader(const uint8_t* fileContent, const char* path, time_t modTime, 
 		}
 	}
 
+#if LIBUNWIND_IMPLEMENTED
 	// add anonymous atoms for any functions (as determined by dwarf unwind) have no symbol names
 	if ( fehFrameSection != NULL ) {
 		for (typename std::vector<FDE_Atom_Info>::const_iterator it = fFDEInfos.begin(); it != fFDEInfos.end(); ++it) {
@@ -2215,7 +2234,7 @@ Reader<A>::Reader(const uint8_t* fileContent, const char* path, time_t modTime, 
 			}
 		}
 	}
-
+#endif
 
 	// add all fixed size anonymous atoms from special sections
 	for (const macho_section<P>* sect=fSectionsStart; sect < fSectionsEnd; ++sect) {
@@ -2382,7 +2401,7 @@ Reader<A>::Reader(const uint8_t* fileContent, const char* path, time_t modTime, 
 			}
 			else {
 				if ( strcmp(sect->segname(), "__DWARFA") == 0 ) {
-					throw "object file contains old DWARF debug info - rebuild with newer compiler";
+					throwf("object file contains old DWARF debug info - rebuild with newer compiler");
 				}
 				uint8_t type (sect->flags() & SECTION_TYPE);
 				switch ( type ) {
@@ -2492,8 +2511,8 @@ Reader<A>::Reader(const uint8_t* fileContent, const char* path, time_t modTime, 
 		pint_t nonLazyPtrValue = P::getP(*((pint_t*)((char*)(fHeader)+fileOffset)));
 		makeReference(A::kPointer, localNonLazy->fAddress, nonLazyPtrValue);
 	}
-	
 
+#if LIBUNWIND_IMPLEMENTED
 	// add personality references to CIEs
 	for (typename std::vector<CIE_Atom_Info>::const_iterator it = fCIEInfos.begin(); it != fCIEInfos.end(); ++it) {
 		if ( it->personality.offsetInFDE != 0 )
@@ -2552,6 +2571,7 @@ Reader<A>::Reader(const uint8_t* fileContent, const char* path, time_t modTime, 
 			}
 		}
 	}
+#endif
 
 	// add command line aliases
 	for(std::vector<ObjectFile::ReaderOptions::AliasPair>::const_iterator it = fOptions.fAliases.begin(); it != fOptions.fAliases.end(); ++it) { 
@@ -2933,6 +2953,7 @@ const macho_section<typename A::P>* Reader<A>::getSectionForAddress(pint_t addr)
 	throwf("section not found for address 0x%08llX", (uint64_t)addr);
 }
 
+#if LIBUNWIND_IMPLEMENTED
 template <typename A>
 ObjectFile::Atom* Reader<A>::getFunctionAtomFromFDEAddress(pint_t addr)
 {
@@ -2955,6 +2976,7 @@ ObjectFile::Atom* Reader<A>::getFunctionAtomFromLSDAAddress(pint_t addr)
 	}
 	return NULL;
 }
+#endif
 
 
 template <>
@@ -3066,7 +3088,7 @@ template <>
 void Reader<x86_64>::addCiePersonalityReference(BaseAtom* cieAtom, uint32_t offsetInCIE, uint8_t encoding)
 {
 	if ( encoding != (DW_EH_PE_indirect|DW_EH_PE_pcrel|DW_EH_PE_sdata4) )
-		throw "unexpected personality encoding in CIE";
+		throwf("unexpected personality encoding in CIE");
 
 	// walk relocs looking for reloc in this CIE
 	uint32_t sectOffset = (cieAtom->getObjectAddress() + offsetInCIE) - fehFrameSection->addr();
@@ -3077,15 +3099,15 @@ void Reader<x86_64>::addCiePersonalityReference(BaseAtom* cieAtom, uint32_t offs
 			switch ( reloc->r_type() ) {
 				case X86_64_RELOC_GOT:
 					if ( !reloc->r_extern() )
-						throw "GOT reloc not extern for personality function";
+						throwf("GOT reloc not extern for personality function");
 					new Reference<x86_64>(x86_64::kPCRel32GOT, AtomAndOffset(cieAtom, offsetInCIE), &fStrings[fSymbols[reloc->r_symbolnum()].n_strx()], 4);
 					return;
 				default:
-					throw "expected GOT reloc for personality function";
+					throwf("expected GOT reloc for personality function");
 			}
 		}
 	}
-	throw "personality function not found for CIE";
+	throwf("personality function not found for CIE");
 }
 
 template <>
@@ -3136,7 +3158,7 @@ template <typename A>
 void Reader<A>::addCiePersonalityReference(BaseAtom* cieAtom, uint32_t offsetInCIE, uint8_t encoding)
 {
 	if ( (encoding != (DW_EH_PE_indirect|DW_EH_PE_pcrel|DW_EH_PE_sdata4)) && (encoding != (DW_EH_PE_indirect|DW_EH_PE_pcrel)) )
-		throw "unexpected personality encoding in CIE";
+		throwf("unexpected personality encoding in CIE");
 
 	// walk relocs looking for personality reloc in this CIE
 	uint32_t sectOffset = (cieAtom->getObjectAddress() + offsetInCIE) - fehFrameSection->addr();
@@ -3158,14 +3180,14 @@ void Reader<A>::addCiePersonalityReference(BaseAtom* cieAtom, uint32_t offsetInC
 			}
 		}
 	}
-	throw "can't find relocation for personality in CIE";
+	throwf("can't find relocation for personality in CIE");
 }
 
 template <typename A>
 void Reader<A>::addFdeReference(uint8_t encoding, AtomAndOffset inFDE, AtomAndOffset target)
 {
 	if ( (encoding & 0xF0) != DW_EH_PE_pcrel ) 
-		throw "unsupported encoding in FDE";
+		throwf("unsupported encoding in FDE");
 	Kinds kind = A::kNoFixUp;
 	switch ( encoding & 0xF ) {
 		case DW_EH_PE_ptr:
@@ -3175,7 +3197,7 @@ void Reader<A>::addFdeReference(uint8_t encoding, AtomAndOffset inFDE, AtomAndOf
 			kind = A::kPointerDiff32;
 			break;
 		default:
-			throw "unsupported encoding in FDE";
+			throwf("unsupported encoding in FDE");
 	}
 	new Reference<A>(kind, inFDE, inFDE, target);
 }
@@ -3245,16 +3267,16 @@ typename A::P::uint_t ObjectFileAddressSpace<A>::getEncodedP(pint_t& addr, pint_
 				result += startAddr;
 			break;
 		case DW_EH_PE_textrel:
-			throw "DW_EH_PE_textrel pointer encoding not supported";
+			throwf("DW_EH_PE_textrel pointer encoding not supported");
 			break;
 		case DW_EH_PE_datarel:
-			throw "DW_EH_PE_datarel pointer encoding not supported";
+			throwf("DW_EH_PE_datarel pointer encoding not supported");
 			break;
 		case DW_EH_PE_funcrel:
-			throw "DW_EH_PE_funcrel pointer encoding not supported";
+			throwf("DW_EH_PE_funcrel pointer encoding not supported");
 			break;
 		case DW_EH_PE_aligned:
-			throw "DW_EH_PE_aligned pointer encoding not supported";
+			throwf("DW_EH_PE_aligned pointer encoding not supported");
 			break;
 		default:
 			throwf("ObjectFileAddressSpace<A>::getEncodedP() encoding 0x%08X not supported", encoding);
@@ -3267,6 +3289,7 @@ typename A::P::uint_t ObjectFileAddressSpace<A>::getEncodedP(pint_t& addr, pint_
 	return result;
 }
 
+#if LIBUNWIND_IMPLEMENTED
 template <>
 uint32_t SymbolAtom<x86>::getCompactUnwindEncoding(uint64_t ehAtomAddress)
 {
@@ -3323,7 +3346,7 @@ uint32_t SymbolAtom<arm>::getCompactUnwindEncoding(uint64_t ehAtomAddress)
 	// compact encoding not supported for arm
 	return 0;
 }
-
+#endif
 
 template <typename A>
 uint8_t SymbolAtom<A>::getLSDAReferenceKind() const 
@@ -3350,7 +3373,7 @@ uint8_t SymbolAtom<A>::getPersonalityReferenceKind() const
 	return 0;
 }
 
-
+#if LIBUNWIND_IMPLEMENTED
 template <>
 uint32_t AnonymousAtom<x86>::getCompactUnwindEncoding(uint64_t ehAtomAddress)
 {
@@ -3407,7 +3430,7 @@ uint32_t AnonymousAtom<arm>::getCompactUnwindEncoding(uint64_t ehAtomAddress)
 	// compact encoding not supported for arm
 	return 0;
 }
-
+#endif
 
 template <typename A>
 uint8_t AnonymousAtom<A>::getLSDAReferenceKind() const 
@@ -3505,13 +3528,11 @@ uint32_t Reader<ppc>::updateCpuConstraint(uint32_t previous)
         // G5 can run everything
         break;
     default:
-        throw "Unhandled PPC cpu subtype!";
+        throwf("Unhandled PPC cpu subtype!");
         break;
 	}
     return previous;
 }
-
-
 
 template <>
 uint32_t Reader<arm>::updateCpuConstraint(uint32_t previous)
@@ -3538,24 +3559,24 @@ uint32_t Reader<arm>::updateCpuConstraint(uint32_t previous)
 		case CPU_SUBTYPE_ARM_V6:
 			// v6 can run everything except xscale and v7
 			if ( fCpuConstraint == CPU_SUBTYPE_ARM_XSCALE )
-				throw "can't mix xscale and v6 code";
+				throwf("can't mix xscale and v6 code");
 			if ( fCpuConstraint == CPU_SUBTYPE_ARM_V7 )
 				return fCpuConstraint;
 			break;
 		case CPU_SUBTYPE_ARM_XSCALE:
 			// xscale can run everything except v6 and v7
 			if ( fCpuConstraint == CPU_SUBTYPE_ARM_V6 )
-				throw "can't mix xscale and v6 code";
+				throwf("can't mix xscale and v6 code");
 			if ( fCpuConstraint == CPU_SUBTYPE_ARM_V7 )
-				throw "can't mix xscale and v7 code";
+				throwf("can't mix xscale and v7 code");
 			break;
 		case CPU_SUBTYPE_ARM_V7:
 			// v7 can run everything except xscale
 			if ( fCpuConstraint == CPU_SUBTYPE_ARM_XSCALE )
-				throw "can't mix xscale and v7 code";
+				throwf("can't mix xscale and v7 code");
 			break;
 		default:
-			throw "Unhandled ARM cpu subtype!";
+			throwf("Unhandled ARM cpu subtype!");
     }
     return previous;
 }
@@ -3592,11 +3613,11 @@ void Reader<x86_64>::validSectionType(uint8_t type)
 {
 	switch ( type ) {
 		case S_SYMBOL_STUBS:
-			throw "symbol_stub sections not valid in x86_64 object files";
+			throwf("symbol_stub sections not valid in x86_64 object files");
 		case S_LAZY_SYMBOL_POINTERS:
-			throw "lazy pointer sections not valid in x86_64 object files";
+			throwf("lazy pointer sections not valid in x86_64 object files");
 		case S_NON_LAZY_SYMBOL_POINTERS:
-			throw "non lazy pointer sections not valid in x86_64 object files";
+			throwf("non lazy pointer sections not valid in x86_64 object files");
 	}
 }
 
@@ -4349,7 +4370,7 @@ bool Reader<A>::addRelocReference_powerpc(const macho_section<typename A::P>* se
 			case PPC_RELOC_LO16:
 				{
 					if ( nextReloc->r_type() != PPC_RELOC_PAIR ) {
-						throw "PPC_RELOC_LO16 missing following pair";
+						throwf("PPC_RELOC_LO16 missing following pair");
 					}
 					result = true;
 					lowBits = (instruction & 0xFFFF);
@@ -4376,7 +4397,7 @@ bool Reader<A>::addRelocReference_powerpc(const macho_section<typename A::P>* se
 			case PPC_RELOC_LO14:
 				{
 					if ( nextReloc->r_type() != PPC_RELOC_PAIR ) {
-						throw "PPC_RELOC_LO14 missing following pair";
+						throwf("PPC_RELOC_LO14 missing following pair");
 					}
 					result = true;
 					lowBits = (instruction & 0xFFFC);
@@ -4403,7 +4424,7 @@ bool Reader<A>::addRelocReference_powerpc(const macho_section<typename A::P>* se
 			case PPC_RELOC_HI16:
 				{
 					if ( nextReloc->r_type() != PPC_RELOC_PAIR ) {
-						throw "PPC_RELOC_HI16 missing following pair";
+						throwf("PPC_RELOC_HI16 missing following pair");
 					}
 					result = true;
 					if ( reloc->r_extern() ) {
@@ -4429,7 +4450,7 @@ bool Reader<A>::addRelocReference_powerpc(const macho_section<typename A::P>* se
 			case PPC_RELOC_HA16:
 				{
 					if ( nextReloc->r_type() != PPC_RELOC_PAIR ) {
-						throw "PPC_RELOC_HA16 missing following pair";
+						throwf("PPC_RELOC_HA16 missing following pair");
 					}
 					result = true;
 					lowBits = (nextReloc->r_address() & 0x0000FFFF);
@@ -4470,14 +4491,14 @@ bool Reader<A>::addRelocReference_powerpc(const macho_section<typename A::P>* se
 			case PPC_RELOC_JBSR:
 				// this is from -mlong-branch codegen.  We ignore the jump island and make reference to the real target
 				if ( nextReloc->r_type() != PPC_RELOC_PAIR ) {
-					throw "PPC_RELOC_JBSR missing following pair";
+					throwf("PPC_RELOC_JBSR missing following pair");
 				}
 				if ( !fHasLongBranchStubs )
 					warning("object file compiled with -mlong-branch which is no longer needed. To remove this warning, recompile without -mlong-branch: %s", fPath);
 				fHasLongBranchStubs = true;
 				result = true;
 				if ( reloc->r_extern() ) {
-					throw "PPC_RELOC_JBSR should not be using an external relocation";
+					throwf("PPC_RELOC_JBSR should not be using an external relocation");
 				}
 				makeReference(A::kBranch24, srcAddr, nextReloc->r_address());
 				if ( (instruction & 0x4C000000) == 0x48000000 ) {
@@ -4555,7 +4576,7 @@ bool Reader<A>::addRelocReference_powerpc(const macho_section<typename A::P>* se
 			case PPC_RELOC_LO16_SECTDIFF:
 				{
 					if ( ! nextRelocIsPair ) {
-						throw "PPC_RELOC_LO16_SECTDIFF missing following pair";
+						throwf("PPC_RELOC_LO16_SECTDIFF missing following pair");
 					}
 					instruction = BigEndian::get32(*fixUpPtr);
 					lowBits = (instruction & 0xFFFF);
@@ -4566,7 +4587,7 @@ bool Reader<A>::addRelocReference_powerpc(const macho_section<typename A::P>* se
 			case PPC_RELOC_LO14_SECTDIFF:
 				{
 					if ( ! nextRelocIsPair ) {
-						throw "PPC_RELOC_LO14_SECTDIFF missing following pair";
+						throwf("PPC_RELOC_LO14_SECTDIFF missing following pair");
 					}
 					instruction = BigEndian::get32(*fixUpPtr);
 					lowBits = (instruction & 0xFFFC);
@@ -4577,7 +4598,7 @@ bool Reader<A>::addRelocReference_powerpc(const macho_section<typename A::P>* se
 			case PPC_RELOC_HA16_SECTDIFF:
 				{
 					if ( ! nextRelocIsPair ) {
-						throw "PPC_RELOC_HA16_SECTDIFF missing following pair";
+						throwf("PPC_RELOC_HA16_SECTDIFF missing following pair");
 					}
 					instruction = BigEndian::get32(*fixUpPtr);
 					lowBits = (nextRelocAddress & 0x0000FFFF);
@@ -4588,7 +4609,7 @@ bool Reader<A>::addRelocReference_powerpc(const macho_section<typename A::P>* se
 			case PPC_RELOC_LO14:
 				{
 					if ( ! nextRelocIsPair ) {
-						throw "PPC_RELOC_LO14 missing following pair";
+						throwf("PPC_RELOC_LO14 missing following pair");
 					}
 					instruction = BigEndian::get32(*fixUpPtr);
 					lowBits = (instruction & 0xFFFC);
@@ -4599,7 +4620,7 @@ bool Reader<A>::addRelocReference_powerpc(const macho_section<typename A::P>* se
 			case PPC_RELOC_LO16:
 				{
 					if ( ! nextRelocIsPair ) {
-						throw "PPC_RELOC_LO16 missing following pair";
+						throwf("PPC_RELOC_LO16 missing following pair");
 					}
 					instruction = BigEndian::get32(*fixUpPtr);
 					lowBits = (instruction & 0xFFFF);
@@ -4610,7 +4631,7 @@ bool Reader<A>::addRelocReference_powerpc(const macho_section<typename A::P>* se
 			case PPC_RELOC_HA16:
 				{
 					if ( ! nextRelocIsPair ) {
-						throw "PPC_RELOC_HA16 missing following pair";
+						throwf("PPC_RELOC_HA16 missing following pair");
 					}
 					instruction = BigEndian::get32(*fixUpPtr);
 					lowBits = (nextRelocAddress & 0xFFFF);
@@ -4621,7 +4642,7 @@ bool Reader<A>::addRelocReference_powerpc(const macho_section<typename A::P>* se
 			case PPC_RELOC_HI16:
 				{
 					if ( ! nextRelocIsPair ) {
-						throw "PPC_RELOC_HI16 missing following pair";
+						throwf("PPC_RELOC_HI16 missing following pair");
 					}
 					instruction = BigEndian::get32(*fixUpPtr);
 					lowBits = (nextRelocAddress & 0xFFFF);
@@ -4633,13 +4654,13 @@ bool Reader<A>::addRelocReference_powerpc(const macho_section<typename A::P>* se
 			case PPC_RELOC_LOCAL_SECTDIFF:
 				{
 					if ( ! nextRelocIsPair ) {
-						throw "PPC_RELOC_SECTDIFF missing following pair";
+						throwf("PPC_RELOC_SECTDIFF missing following pair");
 					}
 					Kinds kind = A::kPointerDiff32;;
 					uint32_t contentAddr = 0;
 					switch ( sreloc->r_length() ) {
 						case 0:
-							throw "bad diff relocations r_length (0) for ppc architecture";
+							throwf("bad diff relocations r_length (0) for ppc architecture");
 						case 1:
 							kind = A::kPointerDiff16;
 							contentAddr = BigEndian::get16(*((uint16_t*)fixUpPtr));
@@ -4717,18 +4738,18 @@ bool Reader<x86>::addRelocReference(const macho_section<x86::P>* sect, const mac
 								pointerValue += srcAddr + sizeof(uint32_t);
 								break;
 							case 3:
-								throw "bad pc-rel vanilla relocation length";
+								throwf("bad pc-rel vanilla relocation length");
 						}
 					}
 					else if ( strcmp(sect->segname(), "__TEXT") == 0 ) {
 						kind = x86::kAbsolute32;
 						if ( reloc->r_length() != 2 )
-							throw "bad vanilla relocation length";
+							throwf("bad vanilla relocation length");
 					}
 					else {
 						kind = x86::kPointer;
 						if ( reloc->r_length() != 2 )
-							throw "bad vanilla relocation length";
+							throwf("bad vanilla relocation length");
 					}
 					if ( reloc->r_extern() ) {
 						const macho_nlist<P>* targetSymbol = &fSymbols[reloc->r_symbolnum()];
@@ -4845,14 +4866,14 @@ bool Reader<x86>::addRelocReference(const macho_section<x86::P>* sect, const mac
 			case GENERIC_RELOC_LOCAL_SECTDIFF:
 				{
 					if ( !nextRelocIsPair ) {
-						throw "GENERIC_RELOC_SECTDIFF missing following pair";
+						throwf("GENERIC_RELOC_SECTDIFF missing following pair");
 					}
 					x86::ReferenceKinds kind = x86::kPointerDiff;
 					uint32_t contentAddr = 0;
 					switch ( sreloc->r_length() ) {
 						case 0:
 						case 3:
-							throw "bad length for GENERIC_RELOC_SECTDIFF";
+							throwf("bad length for GENERIC_RELOC_SECTDIFF");
 						case 1:
 							kind = x86::kPointerDiff16;
 							contentAddr = LittleEndian::get16(*((uint16_t*)fixUpPtr));
@@ -4914,11 +4935,11 @@ bool Reader<x86_64>::addRelocReference(const macho_section<x86_64::P>* sect, con
 	switch ( reloc->r_type() ) {
 		case X86_64_RELOC_UNSIGNED:
 			if ( reloc->r_pcrel() )
-				throw "pcrel and X86_64_RELOC_UNSIGNED not supported";
+				throwf("pcrel and X86_64_RELOC_UNSIGNED not supported");
 			switch ( reloc->r_length() ) {
 				case 0:
 				case 1:
-					throw "length < 2 and X86_64_RELOC_UNSIGNED not supported";
+					throwf("length < 2 and X86_64_RELOC_UNSIGNED not supported");
 				case 2:
 					kind = x86_64::kPointer32;
 					break;
@@ -4950,9 +4971,9 @@ bool Reader<x86_64>::addRelocReference(const macho_section<x86_64::P>* sect, con
 		case X86_64_RELOC_SIGNED_2:
 		case X86_64_RELOC_SIGNED_4:
 			if ( ! reloc->r_pcrel() )
-				throw "not pcrel and X86_64_RELOC_SIGNED* not supported";
+				throwf("not pcrel and X86_64_RELOC_SIGNED* not supported");
 			if ( reloc->r_length() != 2 ) 
-				throw "length != 2 and X86_64_RELOC_SIGNED* not supported";
+				throwf("length != 2 and X86_64_RELOC_SIGNED* not supported");
 			addend = (int64_t)((int32_t)(E::get32(*fixUpPtr)));
 			if ( reloc->r_extern() ) {
 				switch ( reloc->r_type() ) {
@@ -5021,7 +5042,7 @@ bool Reader<x86_64>::addRelocReference(const macho_section<x86_64::P>* sect, con
 			break;
 		case X86_64_RELOC_BRANCH:
 			if ( ! reloc->r_pcrel() )
-				throw "not pcrel and X86_64_RELOC_BRANCH not supported";
+				throwf("not pcrel and X86_64_RELOC_BRANCH not supported");
 			if ( reloc->r_length() == 2 ) {
 				dstAddr = (int64_t)((int32_t)(E::get32(*fixUpPtr)));
 				if ( reloc->r_extern() ) {
@@ -5057,11 +5078,11 @@ bool Reader<x86_64>::addRelocReference(const macho_section<x86_64::P>* sect, con
 			break;
 		case X86_64_RELOC_GOT:
 			if ( ! reloc->r_extern() ) 
-				throw "not extern and X86_64_RELOC_GOT not supported";
+				throwf("not extern and X86_64_RELOC_GOT not supported");
 			if ( ! reloc->r_pcrel() )
-				throw "not pcrel and X86_64_RELOC_GOT not supported";
+				throwf("not pcrel and X86_64_RELOC_GOT not supported");
 			if ( reloc->r_length() != 2 ) 
-				throw "length != 2 and X86_64_RELOC_GOT not supported";
+				throwf("length != 2 and X86_64_RELOC_GOT not supported");
 			addend = (int64_t)((int32_t)(E::get32(*fixUpPtr)));
 			if ( isWeakImportSymbol(targetSymbol) )
 				makeReferenceToSymbol(x86_64::kPCRel32GOTWeakImport, srcAddr, targetSymbol, addend);
@@ -5070,11 +5091,11 @@ bool Reader<x86_64>::addRelocReference(const macho_section<x86_64::P>* sect, con
 			break;
 		case X86_64_RELOC_GOT_LOAD:
 			if ( ! reloc->r_extern() ) 
-				throw "not extern and X86_64_RELOC_GOT_LOAD not supported";
+				throwf("not extern and X86_64_RELOC_GOT_LOAD not supported");
 			if ( ! reloc->r_pcrel() )
-				throw "not pcrel and X86_64_RELOC_GOT_LOAD not supported";
+				throwf("not pcrel and X86_64_RELOC_GOT_LOAD not supported");
 			if ( reloc->r_length() != 2 ) 
-				throw "length != 2 and X86_64_RELOC_GOT_LOAD not supported";
+				throwf("length != 2 and X86_64_RELOC_GOT_LOAD not supported");
 			addend = (int64_t)((int32_t)(E::get32(*fixUpPtr)));
 			if ( isWeakImportSymbol(targetSymbol) )
 				makeReferenceToSymbol(x86_64::kPCRel32GOTLoadWeakImport, srcAddr, targetSymbol, addend);
@@ -5084,19 +5105,19 @@ bool Reader<x86_64>::addRelocReference(const macho_section<x86_64::P>* sect, con
 		case X86_64_RELOC_SUBTRACTOR:
 		{
 			if ( reloc->r_pcrel() )
-				throw "X86_64_RELOC_SUBTRACTOR cannot be pc-relative";
+				throwf("X86_64_RELOC_SUBTRACTOR cannot be pc-relative");
 			if ( reloc->r_length() < 2 )
-				throw "X86_64_RELOC_SUBTRACTOR must have r_length of 2 or 3";
+				throwf("X86_64_RELOC_SUBTRACTOR must have r_length of 2 or 3");
 			if ( !reloc->r_extern() )
-				throw "X86_64_RELOC_SUBTRACTOR must have r_extern=1";
+				throwf("X86_64_RELOC_SUBTRACTOR must have r_extern=1");
 			const macho_relocation_info<x86_64::P>* nextReloc = &reloc[1];
 			if ( nextReloc->r_type() != X86_64_RELOC_UNSIGNED )
-				throw "X86_64_RELOC_SUBTRACTOR must be followed by X86_64_RELOC_UNSIGNED";
+				throwf("X86_64_RELOC_SUBTRACTOR must be followed by X86_64_RELOC_UNSIGNED");
 			result = true;
 			if ( nextReloc->r_pcrel() )
-				throw "X86_64_RELOC_UNSIGNED following a X86_64_RELOC_SUBTRACTOR cannot be pc-relative";
+				throwf("X86_64_RELOC_UNSIGNED following a X86_64_RELOC_SUBTRACTOR cannot be pc-relative");
 			if ( nextReloc->r_length() != reloc->r_length() )
-				throw "X86_64_RELOC_UNSIGNED following a X86_64_RELOC_SUBTRACTOR must have same r_length";
+				throwf("X86_64_RELOC_UNSIGNED following a X86_64_RELOC_SUBTRACTOR must have same r_length");
 			Reference<x86_64>* ref;
 			bool negativeAddend;
 			if ( reloc->r_length() == 2 ) {
@@ -5141,7 +5162,7 @@ bool Reader<x86_64>::addRelocReference(const macho_section<x86_64::P>* sect, con
 				}
 			}
 			else {
-				throw "X86_64_RELOC_SUBTRACTOR not supported with r_extern=0";
+				throwf("X86_64_RELOC_SUBTRACTOR not supported with r_extern=0");
 			}
 			// addend goes in from side iff negative
 			if ( negativeAddend )
@@ -5313,7 +5334,7 @@ bool Reader<arm>::addRelocReference(const macho_section<arm::P>* sect,
 
 			case ARM_RELOC_VANILLA:
 				if ( reloc->r_length() != 2 )
-					throw "bad length for ARM_RELOC_VANILLA";
+					throwf("bad length for ARM_RELOC_VANILLA");
 
 				pointerValue = instruction;
 				kind = arm::kPointer;
@@ -5366,7 +5387,7 @@ bool Reader<arm>::addRelocReference(const macho_section<arm::P>* sect,
 		switch (sreloc->r_type()) {
 			case ARM_RELOC_VANILLA:
 				if ( sreloc->r_length() != 2 )
-					throw "bad length for ARM_RELOC_VANILLA";
+					throwf("bad length for ARM_RELOC_VANILLA");
 
 				//fprintf(stderr, "scattered pointer reloc: srcAddr=0x%08X, dstAddr=0x%08X, pointer=0x%08X\n", srcAddr, dstAddr, betterDstAddr);
 				betterDstAddr = LittleEndian::get32(*fixUpPtr);
@@ -5419,10 +5440,10 @@ bool Reader<arm>::addRelocReference(const macho_section<arm::P>* sect,
 			case ARM_RELOC_SECTDIFF:
 			case ARM_RELOC_LOCAL_SECTDIFF:
 				if ( !nextRelocIsPair ) {
-					throw "ARM_RELOC_SECTDIFF missing following pair";
+					throwf("ARM_RELOC_SECTDIFF missing following pair");
 				}
 				if ( sreloc->r_length() != 2 )
-					throw "bad length for ARM_RELOC_SECTDIFF";
+					throwf("bad length for ARM_RELOC_SECTDIFF");
 				{
 				AtomAndOffset srcao  = findAtomAndOffset(srcAddr);
 				AtomAndOffset fromao = findAtomAndOffset(nextRelocValue);
@@ -5622,7 +5643,7 @@ const char* Reference<ppc>::getDescription() const
 			return temp;
 			}
 		case ppc::kPointerDiff64:
-			throw "unsupported refrence kind";
+			throwf("unsupported refrence kind");
 			break;
 		case ppc::kBranch24WeakImport:
 			sprintf(temp, "offset 0x%04X, pc-rel branch fixup to weak imported ", fFixUpOffsetInSrc);
@@ -5907,7 +5928,6 @@ const char* Reference<x86_64>::getDescription() const
 	return temp;
 }
 
-
 template <>
 const char* Reference<arm>::getDescription() const
 {
@@ -5990,7 +6010,6 @@ const char* Reference<arm>::getDescription() const
 	return temp;
 }
 
-
 template <>
 bool Reference<x86>::isBranch() const
 {
@@ -6052,7 +6071,6 @@ bool Reference<arm>::isBranch() const
 			return false;
 	}
 }
-
 
 
 }; // namespace relocatable

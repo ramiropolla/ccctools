@@ -9806,6 +9806,7 @@ enum bool
 has_resource_fork(
 char *filename)
 {
+#if 0
     int err;
     struct attrlist alist;
     struct fileinfobuf finfo;
@@ -9857,6 +9858,7 @@ char *filename)
 	 */
 	if((finfo.finderinfo[0] != 0) || (finfo.finderinfo[1] != 0))
 	    return(TRUE);
+#endif
 
 	return(FALSE);
 }

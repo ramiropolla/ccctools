@@ -29,6 +29,7 @@
 #include <vector>
 
 #include "ObjectFile.h"
+#include "Options.h"
 
 namespace opaque_section {
 
@@ -88,8 +89,8 @@ public:
 	virtual ObjectFile::Atom&						getFromTarget() const		{ return *((ObjectFile::Atom*)fFromTarget); }
 	virtual const char*								getFromTargetName() const	{ return fFromTarget->getName();  }
 	virtual uint64_t								getFromTargetOffset() const { return fFromTargetOffset; }
-	virtual void									setTarget(ObjectFile::Atom&, uint64_t offset) { throw "can't set target"; }
-	virtual void									setFromTarget(ObjectFile::Atom&) { throw "can't set from target"; }
+	virtual void									setTarget(ObjectFile::Atom&, uint64_t offset) { throwf("can't set target"); }
+	virtual void									setFromTarget(ObjectFile::Atom&) { throwf("can't set from target"); }
 	virtual const char*								getDescription() const		{ return "opaque section reference"; }
 
 private:

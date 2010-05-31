@@ -462,9 +462,6 @@ static enum bool ispoweroftwo(unsigned long x);
 static vm_prot_t getprot(char *prot, char **endp);
 static enum bool check_max_init_prot(vm_prot_t maxprot, vm_prot_t initprot);
 
-/* apple_version is in ld_vers.c which is created by the Makefile */
-extern char apple_version[];
-
 /*
  * main() parses the command line arguments and drives the link-edit process.
  */
@@ -1868,8 +1865,6 @@ char *envp[])
 		case 'v':
 		    if(strcmp(p, "v") == 0){
 			vflag = TRUE;
-			printf("Apple Computer, Inc. version %s\n",
-			       apple_version);
 		    }
 		    else
 			goto unknown_flag;

@@ -1,0 +1,29 @@
+CFLAGS = -I../include
+CFLAGS+= -D__LITTLE_ENDIAN__
+CFLAGS+= -D__private_extern__='__attribute__((visibility("hidden")))'
+CFLAGS+= -D__DARWIN_UNIX03=1
+CFLAGS+= -std=c99
+CFLAGS+= -D_XOPEN_SOURCE=600
+CFLAGS+= -Wno-deprecated-declarations
+CFLAGS+= -D_ISOC99_SOURCE
+CFLAGS+= -D_POSIX_C_SOURCE=200112
+CFLAGS+= -fno-builtin-round
+CFLAGS+= -D_BSD_SOURCE
+
+PRODUCT=libmacho.a
+
+all: $(PRODUCT)
+
+CFILES = arch.c getsecbyname.c getsegbyname.c get_end.c \
+         swap.c hppa_swap.c i386_swap.c m68k_swap.c sparc_swap.c \
+         ppc_swap.c i860_swap.c m88k_swap.c
+OBJS = $(CFILES:.c=.o)
+
+%.o: %.c
+	$(CC) -m32 $(CPPFLAGS) $(CFLAGS) -c $< -o $@
+
+libmacho.a: $(OBJS)
+	$(AR) cru $@ $^
+
+clean:
+	rm -f $(OBJS) $(PRODUCT)

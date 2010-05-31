@@ -22,7 +22,11 @@
  * @APPLE_LICENSE_HEADER_END@
  */
 
+#include "strlcpy.h"
 
+#include <stdarg.h>
+#include <string.h>
+#include <limits.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <mach/vm_prot.h>
@@ -37,10 +41,12 @@
 
 extern void printLTOVersion(Options &opts);
 
+#if 0
 // magic to place command line in crash reports
 extern "C" char* __crashreporter_info__;
 static char crashreporterBuffer[1000];
 char* __crashreporter_info__ = crashreporterBuffer;
+#endif
 
 static bool			sEmitWarnings = true;
 static const char*	sWarningsSideFilePath = NULL;
@@ -75,6 +81,8 @@ void throwf(const char* format, ...)
 	va_start(list, format);
 	vasprintf(&p, format, list);
 	va_end(list);
+
+	fprintf(stderr, "got unhandled exception: %s\n", p);
 
 	const char*	t = p;
 	throw t;
@@ -204,7 +212,7 @@ bool Options::interposable(const char* name)
 		case kInterposeSome:
 			return fInterposeList.contains(name);
 	}
-	throw "internal error";
+	throwf("internal error");
 }
 
 bool Options::needsModuleTable()
@@ -488,7 +496,7 @@ bool Options::shouldExport(const char* symbolName)
 		case kExportDefault:
 			return true;
 	}
-	throw "internal error";
+	throwf("internal error");
 }
 
 bool Options::keepLocalSymbol(const char* symbolName)
@@ -503,13 +511,13 @@ bool Options::keepLocalSymbol(const char* symbolName)
 		case kLocalSymbolsSelectiveExclude:
 			return ! fLocalSymbolsExcluded.contains(symbolName);
 	}
-	throw "internal error";
+	throwf("internal error");
 }
 
 void Options::parseArch(const char* architecture)
 {
 	if ( architecture == NULL )
-		throw "-arch must be followed by an architecture string";
+		throwf("-arch must be followed by an architecture string");
 	if ( strcmp(architecture, "ppc") == 0 ) {
 		fArchitecture = CPU_TYPE_POWERPC;
 		fSubArchitecture = CPU_SUBTYPE_POWERPC_ALL;
@@ -667,7 +675,7 @@ Options::FileInfo Options::findLibrary(const char* rootName, bool dylibsOnly)
 Options::FileInfo Options::findFramework(const char* frameworkName)
 {
 	if ( frameworkName == NULL )
-		throw "-framework missing next argument";
+		throwf("-framework missing next argument");
 	char temp[strlen(frameworkName)+1];
 	strcpy(temp, frameworkName);
 	const char* name = temp;
@@ -1192,7 +1200,7 @@ void Options::parseAliasFile(const char* fileOfAliases)
 void Options::setUndefinedTreatment(const char* treatment)
 {
 	if ( treatment == NULL )
-		throw "-undefined missing [ warning | error | suppress | dynamic_lookup ]";
+		throwf("-undefined missing [ warning | error | suppress | dynamic_lookup ]");
 
 	if ( strcmp(treatment, "warning") == 0 )
 		fUndefinedTreatment = kUndefinedWarning;
@@ -1203,7 +1211,7 @@ void Options::setUndefinedTreatment(const char* treatment)
 	else if ( strcmp(treatment, "dynamic_lookup") == 0 )
 		fUndefinedTreatment = kUndefinedDynamicLookup;
 	else
-		throw "invalid option to -undefined [ warning | error | suppress | dynamic_lookup ]";
+		throwf("invalid option to -undefined [ warning | error | suppress | dynamic_lookup ]");
 }
 
 Options::Treatment Options::parseTreatment(const char* treatment)
@@ -1224,7 +1232,7 @@ Options::Treatment Options::parseTreatment(const char* treatment)
 void Options::setMacOSXVersionMin(const char* version)
 {
 	if ( version == NULL )
-		throw "-macosx_version_min argument missing";
+		throwf("-macosx_version_min argument missing");
 
 	if ( (strncmp(version, "10.", 3) == 0) && isdigit(version[3]) ) {
 		int num = version[3] - '0';
@@ -1261,13 +1269,13 @@ void Options::setMacOSXVersionMin(const char* version)
 void Options::setIPhoneVersionMin(const char* version)
 {
 	if ( version == NULL )
-		throw "-iphoneos_version_min argument missing";
+		throwf("-iphoneos_version_min argument missing");
 	if ( ! isdigit(version[0]) )
-		throw "-iphoneos_version_min argument is not a number";
+		throwf("-iphoneos_version_min argument is not a number");
 	if ( version[1] != '.' )
-		throw "-iphoneos_version_min argument is missing period as second character";
+		throwf("-iphoneos_version_min argument is missing period as second character");
 	if ( ! isdigit(version[2]) )
-		throw "-iphoneos_version_min argument is not a number";
+		throwf("-iphoneos_version_min argument is not a number");
 
 		 if ( (version[0] == '2') && (version[2] == '0') )
 		fReaderOptions.fIPhoneVersionMin = ObjectFile::ReaderOptions::k2_0;
@@ -1303,7 +1311,7 @@ bool Options::minOS(ObjectFile::ReaderOptions::MacVersionMin requiredMacMin, Obj
 void Options::setWeakReferenceMismatchTreatment(const char* treatment)
 {
 	if ( treatment == NULL )
-		throw "-weak_reference_mismatches missing [ error | weak | non-weak ]";
+		throwf("-weak_reference_mismatches missing [ error | weak | non-weak ]");
 
 	if ( strcmp(treatment, "error") == 0 )
 		fWeakReferenceMismatchTreatment = kWeakReferenceMismatchError;
@@ -1312,13 +1320,13 @@ void Options::setWeakReferenceMismatchTreatment(const char* treatment)
 	else if ( strcmp(treatment, "non-weak") == 0 )
 		fWeakReferenceMismatchTreatment = kWeakReferenceMismatchNonWeak;
 	else
-		throw "invalid option to -weak_reference_mismatches [ error | weak | non-weak ]";
+		throwf("invalid option to -weak_reference_mismatches [ error | weak | non-weak ]");
 }
 
 Options::CommonsMode Options::parseCommonsTreatment(const char* mode)
 {
 	if ( mode == NULL )
-		throw "-commons missing [ ignore_dylibs | use_dylibs | error ]";
+		throwf("-commons missing [ ignore_dylibs | use_dylibs | error ]");
 
 	if ( strcmp(mode, "ignore_dylibs") == 0 )
 		return kCommonsIgnoreDylibs;
@@ -1327,16 +1335,16 @@ Options::CommonsMode Options::parseCommonsTreatment(const char* mode)
 	else if ( strcmp(mode, "error") == 0 )
 		return kCommonsConflictsDylibsError;
 	else
-		throw "invalid option to -commons [ ignore_dylibs | use_dylibs | error ]";
+		throwf("invalid option to -commons [ ignore_dylibs | use_dylibs | error ]");
 }
 
 void Options::addDylibOverride(const char* paths)
 {
 	if ( paths == NULL )
-		throw "-dylib_file must followed by two colon separated paths";
+		throwf("-dylib_file must followed by two colon separated paths");
 	const char* colon = strchr(paths, ':');
 	if ( colon == NULL )
-		throw "-dylib_file must followed by two colon separated paths";
+		throwf("-dylib_file must followed by two colon separated paths");
 	int len = colon-paths;
 	char* target = new char[len+2];
 	strncpy(target, paths, len);
@@ -1608,7 +1616,7 @@ void Options::parseSectionOrderFile(const char* segment, const char* section, co
 void Options::addSection(const char* segment, const char* section, const char* path)
 {
 	if ( strlen(segment) > 16 )
-		throw "-seccreate segment name max 16 chars";
+		throwf("-seccreate segment name max 16 chars");
 	if ( strlen(section) > 16 ) {
 		char* tmp = strdup(section);
 		tmp[16] = '\0';
@@ -1637,17 +1645,17 @@ void Options::addSection(const char* segment, const char* section, const char* p
 void Options::addSectionAlignment(const char* segment, const char* section, const char* alignmentStr)
 {
 	if ( strlen(segment) > 16 )
-		throw "-sectalign segment name max 16 chars";
+		throwf("-sectalign segment name max 16 chars");
 	if ( strlen(section) > 16 )
-		throw "-sectalign section name max 16 chars";
+		throwf("-sectalign section name max 16 chars");
 
 	// argument to -sectalign is a hexadecimal number
 	char* endptr;
 	unsigned long value = strtoul(alignmentStr, &endptr, 16);
 	if ( *endptr != '\0')
-		throw "argument for -sectalign is not a hexadecimal number";
+		throwf("argument for -sectalign is not a hexadecimal number");
 	if ( value > 0x8000 )
-		throw "argument for -sectalign must be less than or equal to 0x8000";
+		throwf("argument for -sectalign must be less than or equal to 0x8000");
 	if ( value == 0 ) {
 		warning("zero is not a valid -sectalign");
 		value = 1;
@@ -1818,19 +1826,19 @@ void Options::parse(int argc, const char* argv[])
 					  || (strcmp(arg, "-compatibility_version") == 0)) {
 				 const char* vers = argv[++i];
 				 if ( vers == NULL )
-					throw "-dylib_compatibility_version missing <version>";
+					throwf("-dylib_compatibility_version missing <version>");
 				fDylibCompatVersion = parseVersionNumber(vers);
 			}
 			else if ( (strcmp(arg, "-dylib_current_version") == 0)
 					  || (strcmp(arg, "-current_version") == 0)) {
 				 const char* vers = argv[++i];
 				 if ( vers == NULL )
-					throw "-dylib_current_version missing <version>";
+					throwf("-dylib_current_version missing <version>");
 				fDylibCurrentVersion = parseVersionNumber(vers);
 			}
 			else if ( strcmp(arg, "-sectorder") == 0 ) {
 				 if ( (argv[i+1]==NULL) || (argv[i+2]==NULL) || (argv[i+3]==NULL) )
-					throw "-sectorder missing <segment> <section> <file-path>";
+					throwf("-sectorder missing <segment> <section> <file-path>");
 				parseSectionOrderFile(argv[i+1], argv[i+2], argv[i+3]);
 				i += 3;
 			}
@@ -1844,7 +1852,7 @@ void Options::parse(int argc, const char* argv[])
 			// -sectcreate puts whole files into a section in the output.
 			else if ( (strcmp(arg, "-sectcreate") == 0) || (strcmp(arg, "-segcreate") == 0) ) {
 				 if ( (argv[i+1]==NULL) || (argv[i+2]==NULL) || (argv[i+3]==NULL) )
-					throw "-sectcreate missing <segment> <section> <file-path>";
+					throwf("-sectcreate missing <segment> <section> <file-path>");
 				addSection(argv[i+1], argv[i+2], argv[i+3]);
 				i += 3;
 			}
@@ -1854,7 +1862,7 @@ void Options::parse(int argc, const char* argv[])
 					  || (strcmp(arg, "-install_name") == 0)) {
 				fDylibInstallName = argv[++i];
 				 if ( fDylibInstallName == NULL )
-					throw "-install_name missing <path>";
+					throwf("-install_name missing <path>");
 			}
 			// Sets the base address of the output.
 			else if ( (strcmp(arg, "-seg1addr") == 0) || (strcmp(arg, "-image_base") == 0) ) {
@@ -1875,7 +1883,7 @@ void Options::parse(int argc, const char* argv[])
 			else if ( strcmp(arg, "-filelist") == 0 ) {
 				 const char* path = argv[++i];
 				 if ( (path == NULL) || (path[0] == '-') )
-					throw "-filelist missing <path>";
+					throwf("-filelist missing <path>");
 				 loadFileList(path);
 			}
 			else if ( strcmp(arg, "-keep_private_externs") == 0 ) {
@@ -1907,37 +1915,37 @@ void Options::parse(int argc, const char* argv[])
 			}
 			else if ( strcmp(arg, "-exported_symbols_list") == 0 ) {
 				if ( fExportMode == kDontExportSome )
-					throw "can't use -exported_symbols_list and -unexported_symbols_list";
+					throwf("can't use -exported_symbols_list and -unexported_symbols_list");
 				fExportMode = kExportSome;
 				loadExportFile(argv[++i], "-exported_symbols_list", fExportSymbols);
 			}
 			else if ( strcmp(arg, "-unexported_symbols_list") == 0 ) {
 				if ( fExportMode == kExportSome )
-					throw "can't use -unexported_symbols_list and -exported_symbols_list";
+					throwf("can't use -unexported_symbols_list and -exported_symbols_list");
 				fExportMode = kDontExportSome;
 				loadExportFile(argv[++i], "-unexported_symbols_list", fDontExportSymbols);
 			}
 			else if ( strcmp(arg, "-exported_symbol") == 0 ) {
 				if ( fExportMode == kDontExportSome )
-					throw "can't use -exported_symbol and -unexported_symbols";
+					throwf("can't use -exported_symbol and -unexported_symbols");
 				fExportMode = kExportSome;
 				fExportSymbols.insert(argv[++i]);
 			}
 			else if ( strcmp(arg, "-unexported_symbol") == 0 ) {
 				if ( fExportMode == kExportSome )
-					throw "can't use -unexported_symbol and -exported_symbol";
+					throwf("can't use -unexported_symbol and -exported_symbol");
 				fExportMode = kDontExportSome;
 				fDontExportSymbols.insert(argv[++i]);
 			}
 			else if ( strcmp(arg, "-non_global_symbols_no_strip_list") == 0 ) {
 				if ( fLocalSymbolHandling == kLocalSymbolsSelectiveExclude )
-					throw "can't use -non_global_symbols_no_strip_list and -non_global_symbols_strip_list";
+					throwf("can't use -non_global_symbols_no_strip_list and -non_global_symbols_strip_list");
 				fLocalSymbolHandling = kLocalSymbolsSelectiveInclude;
 				loadExportFile(argv[++i], "-non_global_symbols_no_strip_list", fLocalSymbolsIncluded);
 			}
 			else if ( strcmp(arg, "-non_global_symbols_strip_list") == 0 ) {
 				if ( fLocalSymbolHandling == kLocalSymbolsSelectiveInclude )
-					throw "can't use -non_global_symbols_no_strip_list and -non_global_symbols_strip_list";
+					throwf("can't use -non_global_symbols_no_strip_list and -non_global_symbols_strip_list");
 				fLocalSymbolHandling = kLocalSymbolsSelectiveExclude;
 				loadExportFile(argv[++i], "-non_global_symbols_strip_list", fLocalSymbolsExcluded);
 			}
@@ -1992,7 +2000,7 @@ void Options::parse(int argc, const char* argv[])
 				switch ( parseTreatment(argv[++i]) ) {
 					case kNULL:
 					case kInvalid:
-						throw "-read_only_relocs missing [ warning | error | suppress ]";
+						throwf("-read_only_relocs missing [ warning | error | suppress ]");
 					case kWarning:
 						fWarnTextRelocs = true;
 						fAllowTextRelocs = true;
@@ -2048,7 +2056,7 @@ void Options::parse(int argc, const char* argv[])
 			else if ( strcmp(arg, "-executable_path") == 0 ) {
 				 fExecutablePath = argv[++i];
 				 if ( (fExecutablePath == NULL) || (fExecutablePath[0] == '-') )
-					throw "-executable_path missing <path>";
+					throwf("-executable_path missing <path>");
 				// if a directory was passed, add / to end
 				// <rdar://problem/5171880> ld64 can't find @executable _path relative dylibs from our umbrella frameworks
 				struct stat statBuffer;
@@ -2065,7 +2073,7 @@ void Options::parse(int argc, const char* argv[])
 			else if ( strcmp(arg, "-segalign") == 0 ) {
 				const char* size = argv[++i];
 				if ( size == NULL )
-					throw "-segalign missing <size>";
+					throwf("-segalign missing <size>");
 				fSegmentAlignment = parseAddress(size);
 				uint8_t alignment = (uint8_t)__builtin_ctz(fSegmentAlignment);
 				uint32_t p2aligned = (1 << alignment);
@@ -2080,7 +2088,7 @@ void Options::parse(int argc, const char* argv[])
 				SegmentStart seg;
 				seg.name = argv[++i];
 				 if ( (seg.name == NULL) || (argv[i+1] == NULL) )
-					throw "-segaddr missing segName Adddress";
+					throwf("-segaddr missing segName Adddress");
 				seg.address = parseAddress(argv[++i]);
 				uint64_t temp = seg.address & (-4096); // page align
 				if ( (seg.address != temp)  )
@@ -2100,7 +2108,7 @@ void Options::parse(int argc, const char* argv[])
 			else if ( strcmp(arg, "-seg_addr_table") == 0 ) {
 				const char* name = argv[++i];
 				if ( name == NULL )
-					throw "-seg_addr_table missing argument";
+					throwf("-seg_addr_table missing argument");
 				fSegAddrTablePath = name;
 			}
 			else if ( strcmp(arg, "-seg_addr_table_filename") == 0 ) {
@@ -2111,7 +2119,7 @@ void Options::parse(int argc, const char* argv[])
 				SegmentProtect seg;
 				seg.name = argv[++i];
 				 if ( (seg.name == NULL) || (argv[i+1] == NULL) || (argv[i+2] == NULL) )
-					throw "-segprot missing segName max-prot init-prot";
+					throwf("-segprot missing segName max-prot init-prot");
 				seg.max = parseProtection(argv[++i]);
 				seg.init = parseProtection(argv[++i]);
 				fCustomSegmentProtections.push_back(seg);
@@ -2119,7 +2127,7 @@ void Options::parse(int argc, const char* argv[])
 			else if ( strcmp(arg, "-pagezero_size") == 0 ) {
 				 const char* size = argv[++i];
 				 if ( size == NULL )
-					throw "-pagezero_size missing <size>";
+					throwf("-pagezero_size missing <size>");
 				fZeroPageSize = parseAddress(size);
 				uint64_t temp = fZeroPageSize & (-4096); // page align
 				if ( (fZeroPageSize != temp)  )
@@ -2129,13 +2137,13 @@ void Options::parse(int argc, const char* argv[])
 			else if ( strcmp(arg, "-stack_addr") == 0 ) {
 				 const char* address = argv[++i];
 				 if ( address == NULL )
-					throw "-stack_addr missing <address>";
+					throwf("-stack_addr missing <address>");
 				fStackAddr = parseAddress(address);
 			}
 			else if ( strcmp(arg, "-stack_size") == 0 ) {
 				 const char* size = argv[++i];
 				 if ( size == NULL )
-					throw "-stack_size missing <address>";
+					throwf("-stack_size missing <address>");
 				fStackSize = parseAddress(size);
 				uint64_t temp = fStackSize & (-4096); // page align
 				if ( (fStackSize != temp)  )
@@ -2146,7 +2154,7 @@ void Options::parse(int argc, const char* argv[])
 			}
 			else if ( strcmp(arg, "-sectalign") == 0 ) {
 				 if ( (argv[i+1]==NULL) || (argv[i+2]==NULL) || (argv[i+3]==NULL) )
-					throw "-sectalign missing <segment> <section> <file-path>";
+					throwf("-sectalign missing <segment> <section> <file-path>");
 				addSectionAlignment(argv[i+1], argv[i+2], argv[i+3]);
 				i += 3;
 			}
@@ -2160,7 +2168,7 @@ void Options::parse(int argc, const char* argv[])
 			else if ( strcmp(arg, "-bundle_loader") == 0 ) {
 				fBundleLoader = argv[++i];
 				if ( (fBundleLoader == NULL) || (fBundleLoader[0] == '-') )
-					throw "-bundle_loader missing <path>";
+					throwf("-bundle_loader missing <path>");
 				FileInfo info = findFile(fBundleLoader);
 				info.options.fBundleLoader = true;
 				fInputFiles.push_back(info);
@@ -2210,19 +2218,19 @@ void Options::parse(int argc, const char* argv[])
 			else if ( strcmp(arg, "-why_live") == 0 ) {
 				 const char* name = argv[++i];
 				if ( name == NULL )
-					throw "-why_live missing symbol name argument";
+					throwf("-why_live missing symbol name argument");
 				fWhyLive.insert(name);
 			}
 			else if ( strcmp(arg, "-u") == 0 ) {
 				const char* name = argv[++i];
 				if ( name == NULL )
-					throw "-u missing argument";
+					throwf("-u missing argument");
 				fInitialUndefines.push_back(name);
 			}
 			else if ( strcmp(arg, "-U") == 0 ) {
 				const char* name = argv[++i];
 				if ( name == NULL )
-					throw "-U missing argument";
+					throwf("-U missing argument");
 				fAllowedUndefined.insert(name);
 			}
 			else if ( strcmp(arg, "-s") == 0 ) {
@@ -2271,7 +2279,7 @@ void Options::parse(int argc, const char* argv[])
 			else if ( strcmp(arg, "-headerpad") == 0 ) {
 				const char* size = argv[++i];
 				if ( size == NULL )
-					throw "-headerpad missing argument";
+					throwf("-headerpad missing argument");
 				 fMinimumHeaderPad = parseAddress(size);
 			}
 			else if ( strcmp(arg, "-headerpad_max_install_names") == 0 ) {
@@ -2290,14 +2298,14 @@ void Options::parse(int argc, const char* argv[])
 			else if ( strcmp(arg, "-umbrella") == 0 ) {
 				const char* name = argv[++i];
 				if ( name == NULL )
-					throw "-umbrella missing argument";
+					throwf("-umbrella missing argument");
 				fUmbrellaName = name;
 			}
 			else if ( strcmp(arg, "-allowable_client") == 0 ) {
 				const char* name = argv[++i];
 
 				if ( name == NULL )
-					throw "-allowable_client missing argument";
+					throwf("-allowable_client missing argument");
 
 				fAllowableClients.push_back(name);
 			}
@@ -2305,32 +2313,32 @@ void Options::parse(int argc, const char* argv[])
 				const char* name = argv[++i];
 
 				if ( name == NULL )
-					throw "-client_name missing argument";
+					throwf("-client_name missing argument");
 
 				fClientName = name;
 			}
 			else if ( strcmp(arg, "-sub_umbrella") == 0 ) {
 				const char* name = argv[++i];
 				if ( name == NULL )
-					throw "-sub_umbrella missing argument";
+					throwf("-sub_umbrella missing argument");
 				 fSubUmbellas.push_back(name);
 			}
 			else if ( strcmp(arg, "-sub_library") == 0 ) {
 				const char* name = argv[++i];
 				if ( name == NULL )
-					throw "-sub_library missing argument";
+					throwf("-sub_library missing argument");
 				 fSubLibraries.push_back(name);
 			}
 			else if ( strcmp(arg, "-init") == 0 ) {
 				const char* name = argv[++i];
 				if ( name == NULL )
-					throw "-init missing argument";
+					throwf("-init missing argument");
 				fInitFunctionName = name;
 			}
 			else if ( strcmp(arg, "-dot") == 0 ) {
 				const char* name = argv[++i];
 				if ( name == NULL )
-					throw "-dot missing argument";
+					throwf("-dot missing argument");
 				fDotOutputFile = name;
 			}
 			else if ( strcmp(arg, "-warn_commons") == 0 ) {
@@ -2373,7 +2381,7 @@ void Options::parse(int argc, const char* argv[])
 			else if ( strcmp(arg, "-dtrace") == 0 ) {
 				const char* name = argv[++i];
 				if ( name == NULL )
-					throw "-dtrace missing argument";
+					throwf("-dtrace missing argument");
 				fDtraceScriptName = name;
 			}
 			else if ( strcmp(arg, "-root_safe") == 0 ) {
@@ -2386,10 +2394,10 @@ void Options::parse(int argc, const char* argv[])
 				ObjectFile::ReaderOptions::AliasPair pair;
 				pair.realName = argv[++i];
 				if ( pair.realName == NULL )
-					throw "missing argument to -alias";
+					throwf("missing argument to -alias");
 				pair.alias = argv[++i];
 				if ( pair.alias == NULL )
-					throw "missing argument to -alias";
+					throwf("missing argument to -alias");
 				fReaderOptions.fAliases.push_back(pair);
 			}
 			else if ( strcmp(arg, "-alias_list") == 0 ) {
@@ -2413,7 +2421,7 @@ void Options::parse(int argc, const char* argv[])
 			else if ( strcmp(arg, "-rpath") == 0 ) {
 				const char* path = argv[++i];
 				if ( path == NULL )
-					throw "missing argument to -rpath";
+					throwf("missing argument to -rpath");
 				fRPaths.push_back(path);
 			}
 			else if ( strcmp(arg, "-read_only_stubs") == 0 ) {
@@ -2425,7 +2433,7 @@ void Options::parse(int argc, const char* argv[])
 			else if ( strcmp(arg, "-map") == 0 ) {
 				fMapPath = argv[++i];
 				if ( fMapPath == NULL )
-					throw "missing argument to -map";
+					throwf("missing argument to -map");
 			}
 			else if ( strcmp(arg, "-pie") == 0 ) {
 				fPositionIndependentExecutable = true;
@@ -2463,7 +2471,7 @@ void Options::parse(int argc, const char* argv[])
 			else if ( strcmp(arg, "-mllvm") == 0 ) {
 				const char* opts = argv[++i];
 				if ( opts == NULL )
-					throw "missing argument to -mllvm";
+					throwf("missing argument to -mllvm");
 				fLLVMOptions.push_back(opts);
 			}
 			else if ( strcmp(arg, "-no_order_inits") == 0 ) {
@@ -2476,7 +2484,7 @@ void Options::parse(int argc, const char* argv[])
 				SegmentSize seg;
 				seg.name = argv[++i];
 				 if ( (seg.name == NULL) || (argv[i+1] == NULL) )
-					throw "-seg_page_size missing segName Adddress";
+					throwf("-seg_page_size missing segName Adddress");
 				seg.size = parseAddress(argv[++i]);
 				uint64_t temp = seg.size & (-4096); // page align
 				if ( (seg.size != temp)  )
@@ -2546,7 +2554,7 @@ void Options::buildSearchPaths(int argc, const char* argv[])
 		if ( (argv[i][0] == '-') && (argv[i][1] == 'L') ) {
 			const char* libSearchDir = &argv[i][2];
 			if ( libSearchDir[0] == '\0' ) 
-				throw "-L must be immediately followed by a directory path (no space)";
+				throwf("-L must be immediately followed by a directory path (no space)");
 			struct stat statbuf;
 			if ( stat(libSearchDir, &statbuf) == 0 ) {
 				if ( statbuf.st_mode & S_IFDIR )
@@ -2561,7 +2569,7 @@ void Options::buildSearchPaths(int argc, const char* argv[])
 		else if ( (argv[i][0] == '-') && (argv[i][1] == 'F') ) {
 			const char* frameworkSearchDir = &argv[i][2];
 			if ( frameworkSearchDir[0] == '\0' ) 
-				throw "-F must be immediately followed by a directory path (no space)";
+				throwf("-F must be immediately followed by a directory path (no space)");
 			struct stat statbuf;
 			if ( stat(frameworkSearchDir, &statbuf) == 0 ) {
 				if ( statbuf.st_mode & S_IFDIR )
@@ -2577,8 +2585,10 @@ void Options::buildSearchPaths(int argc, const char* argv[])
 			addStandardLibraryDirectories = false;
 		else if ( strcmp(argv[i], "-v") == 0 ) {
 			fVerbose = true;
+#if 0
 			extern const char ldVersionString[];
 			fprintf(stderr, "%s", ldVersionString);
+#endif
 			 // if only -v specified, exit cleanly
 			 if ( argc == 2 ) {
 #if LTO_SUPPORT
@@ -2590,7 +2600,7 @@ void Options::buildSearchPaths(int argc, const char* argv[])
 		else if ( strcmp(argv[i], "-syslibroot") == 0 ) {
 			const char* path = argv[++i];
 			if ( path == NULL )
-				throw "-syslibroot missing argument";
+				throwf("-syslibroot missing argument");
 			fSDKPaths.push_back(path);
 		}
 		else if ( strcmp(argv[i], "-search_paths_first") == 0 ) {
@@ -3193,7 +3203,7 @@ void Options::checkIllegalOptionCombinations()
 		case kUndefinedSuppress:
 			// requires flat namespace
 			if ( fNameSpace == kTwoLevelNameSpace )
-				throw "can't use -undefined warning or suppress with -twolevel_namespace";
+				throwf("can't use -undefined warning or suppress with -twolevel_namespace");
 			break;
 	}
 
@@ -3249,16 +3259,16 @@ void Options::checkIllegalOptionCombinations()
 			case CPU_TYPE_POWERPC:
             case CPU_TYPE_ARM:
 				if ( fStackAddr > 0xFFFFFFFF )
-					throw "-stack_addr must be < 4G for 32-bit processes";
+					throwf("-stack_addr must be < 4G for 32-bit processes");
 				break;
 			case CPU_TYPE_POWERPC64:
 			case CPU_TYPE_X86_64:
 				break;
 		}
 		if ( (fStackAddr & -4096) != fStackAddr )
-			throw "-stack_addr must be multiples of 4K";
+			throwf("-stack_addr must be multiples of 4K");
 		if ( fStackSize  == 0 )
-			throw "-stack_addr must be used with -stack_size";
+			throwf("-stack_addr must be used with -stack_size");
 	}
 
 	// check -stack_size
@@ -3267,7 +3277,7 @@ void Options::checkIllegalOptionCombinations()
 			case CPU_TYPE_I386:
 			case CPU_TYPE_POWERPC:
 				if ( fStackSize > 0xFFFFFFFF )
-					throw "-stack_size must be < 4G for 32-bit processes";
+					throwf("-stack_size must be < 4G for 32-bit processes");
 				if ( fStackAddr == 0 ) {
 					fStackAddr = 0xC0000000;
 				}
@@ -3276,11 +3286,11 @@ void Options::checkIllegalOptionCombinations()
 				break;
             case CPU_TYPE_ARM:
 				if ( fStackSize > 0x2F000000 )
-					throw "-stack_size must be < 752MB";
+					throwf("-stack_size must be < 752MB");
 				if ( fStackAddr == 0 )
 					fStackAddr = 0x2F000000;
                 if ( fStackAddr > 0x30000000)
-                    throw "-stack_addr must be < 0x30000000 for arm";
+                    throwf("-stack_addr must be < 0x30000000 for arm");
 			case CPU_TYPE_POWERPC64:
 			case CPU_TYPE_X86_64:
 				if ( fStackAddr == 0 ) {
@@ -3289,7 +3299,7 @@ void Options::checkIllegalOptionCombinations()
 				break;
 		}
 		if ( (fStackSize & -4096) != fStackSize )
-			throw "-stack_size must be multiples of 4K";
+			throwf("-stack_size must be multiples of 4K");
 		switch ( fOutputKind ) {
 			case Options::kDynamicExecutable:
 			case Options::kStaticExecutable:
@@ -3301,7 +3311,7 @@ void Options::checkIllegalOptionCombinations()
 			case Options::kDyld:
 			case Options::kPreload:
 			case Options::kKextBundle:
-				throw "-stack_size option can only be used when linking a main executable";
+				throwf("-stack_size option can only be used when linking a main executable");
 		}
 	}
 
@@ -3318,7 +3328,7 @@ void Options::checkIllegalOptionCombinations()
 			case Options::kDyld:
 			case Options::kPreload:
 			case Options::kKextBundle:
-				throw "-allow_stack_execute option can only be used when linking a main executable";
+				throwf("-allow_stack_execute option can only be used when linking a main executable");
 		}
 	}
 
@@ -3334,33 +3344,33 @@ void Options::checkIllegalOptionCombinations()
 			case Options::kDyld:
 			case Options::kPreload:
 			case Options::kKextBundle:
-				throw "-client_name can only be used with -bundle";
+				throwf("-client_name can only be used with -bundle");
 		}
 	}
 	
 	// check -init is only used when building a dylib
 	if ( (fInitFunctionName != NULL) && (fOutputKind != Options::kDynamicLibrary) )
-		throw "-init can only be used with -dynamiclib";
+		throwf("-init can only be used with -dynamiclib");
 
 	// check -bundle_loader only used with -bundle
 	if ( (fBundleLoader != NULL) && (fOutputKind != Options::kDynamicBundle) )
-		throw "-bundle_loader can only be used with -bundle";
+		throwf("-bundle_loader can only be used with -bundle");
 
 	// check -dtrace not used with -r
 	if ( (fDtraceScriptName != NULL) && (fOutputKind == Options::kObjectFile) )
-		throw "-dtrace can only be used when creating final linked images";
+		throwf("-dtrace can only be used when creating final linked images");
 
 	// check -d can only be used with -r
 	if ( fReaderOptions.fMakeTentativeDefinitionsReal && (fOutputKind != Options::kObjectFile) )
-		throw "-d can only be used with -r";
+		throwf("-d can only be used with -r");
 
 	// check that -root_safe is not used with -r
 	if ( fReaderOptions.fRootSafe && (fOutputKind == Options::kObjectFile) )
-		throw "-root_safe cannot be used with -r";
+		throwf("-root_safe cannot be used with -r");
 
 	// check that -setuid_safe is not used with -r
 	if ( fReaderOptions.fSetuidSafe && (fOutputKind == Options::kObjectFile) )
-		throw "-setuid_safe cannot be used with -r";
+		throwf("-setuid_safe cannot be used with -r");
 
 	// make sure all required exported symbols exist
 	std::vector<const char*> impliedExports;
@@ -3456,18 +3466,18 @@ void Options::checkIllegalOptionCombinations()
 			case Options::kPreload:
 			case Options::kKextBundle:
 				if ( fZeroPageSize != 0 )
-					throw "-pagezero_size option can only be used when linking a main executable";
+					throwf("-pagezero_size option can only be used when linking a main executable");
 		}
 	}
 
 	// -dead_strip and -r are incompatible
 	if ( (fDeadStrip != kDeadStripOff) && (fOutputKind == Options::kObjectFile) )
-		throw "-r and -dead_strip cannot be used together";
+		throwf("-r and -dead_strip cannot be used together");
 
 	// can't use -rpath unless targeting 10.5 or later
 	if ( fRPaths.size() > 0 ) {
 		if ( !minOS(ObjectFile::ReaderOptions::k10_5, ObjectFile::ReaderOptions::k2_0) )
-			throw "-rpath can only be used when targeting Mac OS X 10.5 or later";
+			throwf("-rpath can only be used when targeting Mac OS X 10.5 or later");
 		switch ( fOutputKind ) {
 			case Options::kDynamicExecutable:
 			case Options::kDynamicLibrary:
@@ -3478,7 +3488,7 @@ void Options::checkIllegalOptionCombinations()
 			case Options::kDyld:
 			case Options::kPreload:
 			case Options::kKextBundle:
-				throw "-rpath can only be used when creating a dynamic final linked image";
+				throwf("-rpath can only be used when creating a dynamic final linked image");
 		}
 	}
 	
@@ -3496,10 +3506,10 @@ void Options::checkIllegalOptionCombinations()
 			case Options::kObjectFile:
 			case Options::kDyld:
 			case Options::kKextBundle:
-				throw "-pie can only be used when linking a main executable";
+				throwf("-pie can only be used when linking a main executable");
 		}
 		if ( !minOS(ObjectFile::ReaderOptions::k10_5, ObjectFile::ReaderOptions::k2_0) )
-			throw "-pie can only be used when targeting Mac OS X 10.5 or later";
+			throwf("-pie can only be used when targeting Mac OS X 10.5 or later");
 	}
 	
 	// check -read_only_relocs is not used with x86_64
@@ -3538,11 +3548,13 @@ void Options::checkForClassic(int argc, const char* argv[])
 	bool creatingMachKernel = false;
 	bool newLinker = false;
 	
+#if 0
 	// build command line buffer in case ld crashes
 	for(int i=1; i < argc; ++i) {
 		strlcat(crashreporterBuffer, argv[i], 1000);
 		strlcat(crashreporterBuffer, " ", 1000);
 	}
+#endif
 
 	for(int i=0; i < argc; ++i) {
 		const char* arg = argv[i];
@@ -3631,7 +3643,7 @@ void Options::gotoClassicLinker(int argc, const char* argv[])
 	char rawPath[PATH_MAX];
 	char path[PATH_MAX];
 	uint32_t bufSize = PATH_MAX;
-	if ( _NSGetExecutablePath(rawPath, &bufSize) != -1 ) {
+	if ( _NSGetExecutablePath(rawPath, (unsigned long *)&bufSize) != -1 ) {
 		if ( realpath(rawPath, path) != NULL ) {
 			char* lastSlash = strrchr(path, '/');
 			if ( lastSlash != NULL ) {

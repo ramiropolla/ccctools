@@ -22,6 +22,7 @@
  * @APPLE_LICENSE_HEADER_END@
  */
 
+#include "strlcpy.h"
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <sys/mman.h>
@@ -387,7 +388,6 @@ static int64_t read_sleb128(const uint8_t*& p, const uint8_t* end)
 		result |= (-1LL) << bit;
 	return result;
 }
-
 
 template <typename A>
 const char* DyldInfoPrinter<A>::rebaseTypeName(uint8_t type)

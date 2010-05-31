@@ -724,7 +724,7 @@ ObjectFile::Reader* Reader::makeMachOReader(const uint8_t* p, size_t len, uint32
 				return new mach_o::relocatable::Reader<arm>(p, "/tmp/lto.o", 0, fReaderOptions, nextInputOrdinal);
 			break;
 	}
-	throw "LLVM LTO, file is not of required architecture";
+	throwf("LLVM LTO, file is not of required architecture");
 }
 
 }; // namespace lto

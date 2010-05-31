@@ -20,13 +20,11 @@
  *
  * @APPLE_LICENSE_HEADER_END@
  */
- 
-// start temp HACK for cross builds
-extern "C" double log2 ( double );
-#define __MATH__
-// end temp HACK for cross builds
 
+#include "strlcpy.h" 
+#define	AR_EFMT1	"#1/"
 
+#include <math.h>
 #include <stdlib.h>
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -36,7 +34,8 @@ extern "C" double log2 ( double );
 #include <errno.h>
 #include <limits.h>
 #include <unistd.h>
-#include <mach/mach_time.h>
+//#include <mach/mach_time.h>
+#include <sys/time.h>
 #include <mach/vm_statistics.h>
 #include <mach/mach_init.h>
 #include <mach/mach_host.h>
@@ -57,6 +56,28 @@ extern "C" double log2 ( double );
 #include "Options.h"
 
 #include "ObjectFile.h"
+
+struct mach_timebase_info {
+        uint32_t        numer;
+        uint32_t        denom;
+};
+
+typedef struct mach_timebase_info       *mach_timebase_info_t;
+typedef struct mach_timebase_info       mach_timebase_info_data_t;
+
+uint64_t mach_absolute_time(void)
+{
+    struct timeval tv;
+    gettimeofday(&tv,NULL);
+    return (int64_t)tv.tv_sec * 1000000000 + tv.tv_usec * 1000;
+}
+
+kern_return_t mach_timebase_info(mach_timebase_info_t info)
+{
+    info->numer = 1;
+    info->denom = 1;
+    return 0;
+}
 
 #include "MachOReaderRelocatable.hpp"
 #include "ArchiveReader.hpp"
@@ -372,7 +393,7 @@ private:
 	void				printStatistics();
 	void				printTime(const char* msg, uint64_t partTime, uint64_t totalTime);
 	char*				commatize(uint64_t in, char* out);
-	void				getVMInfo(vm_statistics_data_t& info);
+//	void				getVMInfo(vm_statistics_data_t& info);
 	cpu_type_t			inferArchitecture();
 	void				checkDylibClientRestrictions(ObjectFile::Reader* reader);
 	void				logDylib(ObjectFile::Reader* reader, bool indirect);
@@ -501,7 +522,7 @@ private:
 	uint32_t											fTotalObjectLoaded;
 	uint32_t											fTotalArchivesLoaded;
 	uint32_t											fTotalDylibsLoaded;
-	vm_statistics_data_t								fStartVMInfo;
+//	vm_statistics_data_t								fStartVMInfo;
 	ObjectFile::Reader::ObjcConstraint					fCurrentObjCConstraint;
 	ObjectFile::Reader::CpuConstraint					fCurrentCpuConstraint;
 	bool												fObjcReplacmentClasses;
@@ -519,8 +540,8 @@ Linker::Linker(int argc, const char* argv[])
 	  fObjcReplacmentClasses(false), fAllDirectDylibsLoaded(false)
 {
 	fStartTime = mach_absolute_time();
-	if ( fOptions.printStatistics() )
-		getVMInfo(fStartVMInfo);
+//	if ( fOptions.printStatistics() )
+//		getVMInfo(fStartVMInfo);
 
 	fArchitecture = fOptions.architecture();
 	if ( fArchitecture == 0 ) {
@@ -886,6 +907,7 @@ char* Linker::commatize(uint64_t in, char* out)
 	return result;
 }
 
+#if 0
 void Linker::getVMInfo(vm_statistics_data_t& info)
 {
 	mach_msg_type_number_t count = sizeof(vm_statistics_data_t) / sizeof(natural_t);
@@ -895,13 +917,14 @@ void Linker::getVMInfo(vm_statistics_data_t& info)
 		bzero(&info, sizeof(vm_statistics_data_t));
 	}
 }
+#endif
 
 void Linker::printStatistics()
 {
 	fEndTime = mach_absolute_time();
 	if ( fOptions.printStatistics() ) {
-		vm_statistics_data_t endVMInfo;
-		getVMInfo(endVMInfo);
+//		vm_statistics_data_t endVMInfo;
+//		getVMInfo(endVMInfo);
 
 		uint64_t totalTime = fEndTime - fStartTime;
 		printTime("ld total time", totalTime, totalTime);
@@ -913,8 +936,8 @@ void Linker::printStatistics()
 		printTime(" sort output",			fStartDebugTime -			fStartSortTime,				totalTime);
 		printTime(" process debug info",	fStartWriteTime -			fStartDebugTime,			totalTime);
 		printTime(" write output",			fEndTime -					fStartWriteTime,			totalTime);
-		fprintf(stderr, "pageins=%u, pageouts=%u, faults=%u\n", endVMInfo.pageins-fStartVMInfo.pageins,
-										endVMInfo.pageouts-fStartVMInfo.pageouts, endVMInfo.faults-fStartVMInfo.faults);
+//		fprintf(stderr, "pageins=%u, pageouts=%u, faults=%u\n", endVMInfo.pageins-fStartVMInfo.pageins,
+//										endVMInfo.pageouts-fStartVMInfo.pageouts, endVMInfo.faults-fStartVMInfo.faults);
 		char temp[40];
 		fprintf(stderr, "processed %3u object files,  totaling %15s bytes\n", fTotalObjectLoaded, commatize(fTotalObjectSize, temp));
 		fprintf(stderr, "processed %3u archive files, totaling %15s bytes\n", fTotalArchivesLoaded, commatize(fTotalArchiveSize, temp));
@@ -1278,7 +1301,7 @@ void Linker::checkUndefines()
 			}
 		}
 		if ( doError ) 
-			throw "symbol(s) not found";
+			throwf("symbol(s) not found");
 	}
 	
 	// for each tentative definition in symbol table look for dylib that exports same symbol name
@@ -1827,7 +1850,7 @@ static uint8_t pcRelKind(cpu_type_t arch)
 		case CPU_TYPE_ARM:
 			return arm::kPointerDiff;
 	}
-	throw "uknown architecture";
+	throwf("uknown architecture");
 }
 
 typedef uint8_t* (*oldcreatedof_func_t) (const char*, cpu_type_t, unsigned int, const char*[], const char*[], uint64_t offsetsInDOF[], size_t* size);
@@ -1996,7 +2019,7 @@ void Linker::processDTrace()
 			this->addAtoms(reader->getAtoms());
 		}
 		else {
-			throw "error creating dtrace DOF section";
+			throwf("error creating dtrace DOF section");
 		}
 	}
 }
@@ -3160,7 +3183,7 @@ void Linker::collectDebugInfo()
 						fCreateUUID = true;
 						break;
 					default:
-						throw "Unhandled type of debug information";
+						throwf("Unhandled type of debug information");
 				}
 			}
 		}
@@ -3219,7 +3242,7 @@ void Linker::collectDebugInfo()
 							collectStabs(reader, atomOrdinals);
 							break;
 						default:
-							throw "Unhandled type of debug information";
+							throwf("Unhandled type of debug information");
 					}
 				}
 			}
@@ -3271,9 +3294,11 @@ const char* Linker::fileArch(const void* p)
 	if ( result != NULL  )
 		 return result;
 		 
+#if LTO_SUPPORT
 	result = lto::Reader::fileKind(bytes);
 	if ( result != NULL  )
 		 return result;
+#endif
 	
 	return "unsupported file format";	 
 }
@@ -3286,7 +3311,7 @@ ObjectFile::Reader* Linker::createReader(const Options::FileInfo& info)
 	if ( fd == -1 )
 		throwf("can't open file, errno=%d", errno);
 	if ( info.fileLen < 20 )
-		throw "file too small";
+		throwf("file too small");
 
 	uint8_t* p = (uint8_t*)::mmap(NULL, info.fileLen, PROT_READ, MAP_FILE | MAP_PRIVATE, fd, 0);
 	if ( p == (uint8_t*)(-1) )
@@ -3546,7 +3571,8 @@ void Linker::createReaders()
 	std::vector<Options::FileInfo>& files = fOptions.getInputFiles();
 	const int count = files.size();
 	if ( count == 0 )
-		throw "no object files specified";
+                throw "no object files specified";
+//		throwf("no object files specified");
 	// add all direct object, archives, and dylibs
 	for (int i=0; i < count; ++i) {
 		Options::FileInfo& entry = files[i];
@@ -3841,7 +3867,7 @@ void Linker::createWriter()
 			this->setOutputFile(new mach_o::executable::Writer<arm>(path, fOptions, dynamicLibraries));
 			break;
 		default:
-			throw "unknown architecture";
+			throwf("unknown architecture");
 	}
 }
 

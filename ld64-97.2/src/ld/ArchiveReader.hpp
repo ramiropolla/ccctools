@@ -39,6 +39,7 @@
 
 #include "MachOFileAbstraction.hpp"
 #include "ObjectFile.h"
+#include "Options.h"
 #include "MachOReaderRelocatable.hpp"
 #if LTO_SUPPORT
 	#include "LTOReader.hpp"
@@ -272,7 +273,7 @@ Reader<A>::Reader(const uint8_t fileContent[], uint64_t fileLength, const char* 
 	fFileLength = fileLength;
 
 	if ( strncmp((const char*)fileContent, "!<arch>\n", 8) != 0 )
-		throw "not an archive";
+		throwf("not an archive");
 
 	// write out path for -whatsloaded option
 	if ( options.fLogAllFiles )
@@ -288,11 +289,11 @@ Reader<A>::Reader(const uint8_t fileContent[], uint64_t fileLength, const char* 
 			fStringPool = (const char*)&contents[ranlibArrayLen+8];
 			if ( ((uint8_t*)(&fTableOfContents[fTableOfContentCount]) > &fileContent[fileLength])
 				|| ((uint8_t*)fStringPool > &fileContent[fileLength]) )
-				throw "malformed archive, perhaps wrong architecture";
+				throwf("malformed archive, perhaps wrong architecture");
 			this->buildHashTable();
 		}
 		else
-			throw "archive has no table of contents";
+			throwf("archive has no table of contents");
 	}
 }
 

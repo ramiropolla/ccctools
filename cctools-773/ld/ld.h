@@ -24,6 +24,9 @@
 #define __private_extern__ __declspec(private_extern)
 #endif
 
+#include "stuff/macosx_deployment_target.h"
+#include "stuff/arch.h"
+
 /*
  * Global types, variables and routines declared in the file ld.c.
  *

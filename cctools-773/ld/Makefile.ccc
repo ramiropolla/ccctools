@@ -1,0 +1,34 @@
+CFLAGS = -I../include
+CFLAGS+= -D__LITTLE_ENDIAN__
+CFLAGS+= -D__private_extern__='__attribute__((visibility("hidden")))'
+CFLAGS+= -D__DARWIN_UNIX03=1
+CFLAGS+= -std=c99
+CFLAGS+= -D_XOPEN_SOURCE=600
+CFLAGS+= -Wno-deprecated-declarations
+CFLAGS+= -D_ISOC99_SOURCE
+CFLAGS+= -D_POSIX_C_SOURCE=200112
+CFLAGS+= -fno-builtin-round -fno-builtin-trunc
+CFLAGS+= -D_BSD_SOURCE
+
+LDFLAGS= -L../libstuff -lstuff -luuid
+
+PRODUCT=ld
+
+all: $(PRODUCT)
+
+CFILES = ld.c pass1.c objects.c sections.c cstring_literals.c symbols.c \
+         fvmlibs.c layout.c specs.c pass2.c generic_reloc.c rld.c sets.c \
+         4byte_literals.c 8byte_literals.c literal_pointers.c dylibs.c \
+         indirect_sections.c mod_sections.c i860_reloc.c ppc_reloc.c \
+         m88k_reloc.c hppa_reloc.c sparc_reloc.c coalesced_sections.c uuid.c \
+         debugcompunit.c debugline.c arm_reloc.c
+OBJS = $(CFILES:.c=.o)
+
+%.o: %.c
+	$(CC) -m32 $(CPPFLAGS) $(CFLAGS) -c $< -o $@
+
+ld: $(OBJS)
+	$(CC) -m32 -o $@ $^ $(LDFLAGS)
+
+clean:
+	rm -f $(OBJS) $(PRODUCT)

@@ -63,6 +63,7 @@ void	badfmt __P((void));
 int	compare __P((char *));
 int	contents __P((char **));
 int	delete __P((char **));
+#define error ar_error
 void	error __P((char *));
 int	extract __P((char **));
 char   *files __P((char **argv));
