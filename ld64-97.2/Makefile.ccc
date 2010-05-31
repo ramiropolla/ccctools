@@ -1,4 +1,4 @@
-CFLAGS = -I../../cctools/include -Iabstraction -Iother -Ild -I.
+CFLAGS = -I../cctools/include -Isrc/abstraction -Isrc/other -Isrc/ld -Isrc/
 CFLAGS+= -D__LITTLE_ENDIAN__
 CFLAGS+= -D__private_extern__='__attribute__((visibility("hidden")))'
 CFLAGS+= -D__DARWIN_UNIX03=1
@@ -9,17 +9,17 @@ CFLAGS+= -D_POSIX_C_SOURCE=200112
 CFLAGS+= -fno-builtin-round -fno-builtin-trunc
 CFLAGS+= -D_BSD_SOURCE
 
-LDFLAGS= -L../../cctools/libstuff -lstuff -luuid -ldl -lcrypto
+LDFLAGS= -L../cctools/libstuff -lstuff -luuid -ldl -lcrypto
 
-PRODUCT=ld64
+PRODUCT=src/ld64
 
 all: $(PRODUCT)
 
-CFILES = ld/debugline.c strlcpy.c
+CFILES = src/ld/debugline.c src/strlcpy.c
 
-CXXFILES = ld/ld.cpp ld/Options.cpp \
-	other/PruneTrie.cpp other/ObjectDump.cpp \
-	other/dyldinfo.cpp other/rebase.cpp other/unwinddump.cpp \
+CXXFILES = src/ld/ld.cpp src/ld/Options.cpp \
+	src/other/PruneTrie.cpp src/other/ObjectDump.cpp \
+	src/other/dyldinfo.cpp src/other/rebase.cpp src/other/unwinddump.cpp \
 
 OBJS = $(CFILES:.c=.o)
 OBJS+= $(CXXFILES:.cpp=.o)
@@ -30,7 +30,7 @@ OBJS+= $(CXXFILES:.cpp=.o)
 %.o: %.cpp
 	$(CXX) -m32 $(CPPFLAGS) $(CFLAGS) -c $< -o $@
 
-ld64: other/PruneTrie.o ld/ld.o ld/Options.o ld/debugline.o strlcpy.o
+src/ld64: src/other/PruneTrie.o src/ld/ld.o src/ld/Options.o src/ld/debugline.o src/strlcpy.o
 	$(CXX) -m32 -o $@ $^ $(LDFLAGS)
 
 clean:
