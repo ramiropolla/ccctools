@@ -148,6 +148,7 @@ char *str)
 {
 	int i;
 	char *p;
+	char *dash;
 	char *prefix, buf[MAXPATHLEN], resolved_name[PATH_MAX];
 	unsigned long bufsize;
 
@@ -163,6 +164,10 @@ char *str)
 	}
 	prefix = realpath(p, resolved_name);
 	p = rindex(prefix, '/');
+	dash = rindex(prefix, '-');
+	if (dash > p)
+	    dash[1] = '\0';
+	else
 	if(p != NULL)
 	    p[1] = '\0';
 
