@@ -3,6 +3,8 @@
 CC=gcc
 CXX=g++
 
+echo $0 $* > config.log
+
 # source path
 SP=$(cd $(dirname $0) && pwd)
 # build path
