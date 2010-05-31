@@ -66,9 +66,7 @@
          (x == THREAD_STATE_NONE))
 
 typedef _STRUCT_PPC_THREAD_STATE	ppc_thread_state_t;
-#if !defined(_POSIX_C_SOURCE) || defined(_DARWIN_C_SOURCE)
 typedef _STRUCT_PPC_THREAD_STATE64	ppc_thread_state64_t;
-#endif /* (_POSIX_C_SOURCE && !_DARWIN_C_SOURCE) */
 typedef _STRUCT_PPC_FLOAT_STATE		ppc_float_state_t;
 typedef _STRUCT_PPC_VECTOR_STATE	ppc_vector_state_t;
 
@@ -109,9 +107,7 @@ typedef struct ppc_thread_state			ppc_saved_state_t;
 /* of covering the full potential state (hi half available). */
 
 typedef _STRUCT_PPC_EXCEPTION_STATE	ppc_exception_state_t;
-#if !defined(_POSIX_C_SOURCE) || defined(_DARWIN_C_SOURCE)
 typedef _STRUCT_PPC_EXCEPTION_STATE64	ppc_exception_state64_t;
-#endif /* (_POSIX_C_SOURCE && !_DARWIN_C_SOURCE) */
 
 /*
  * Save State Flags

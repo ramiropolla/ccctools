@@ -103,7 +103,7 @@ Files available from the MacOSX SDK only:
 mach/i386/boolean.h
 mach/i386/kern_return.h
 mach/i386/vm_types.h
-i386/_types.h
+i386/_types.h              EDITED
 mach/i386/vm_param.h
 mach/i386/task.h
 mach/i386/thread_act.h
@@ -114,12 +114,12 @@ mach/i386/thread_state.h
 mach/i386/processor_info.h
 libkern/i386/OSByteOrder.h
 i386/endian.h
-mach/i386/_structs.h
+mach/i386/_structs.h       EDITED
 mach/i386/fp_reg.h
 i386/eflags.h
 libkern/i386/_OSByteOrder.h
-mach/ppc/thread_status.h
-mach/ppc/_structs.h
+mach/ppc/thread_status.h   EDITED
+mach/ppc/_structs.h        EDITED
 libc.h
 tzfile.h
 servers/bootstrap.h

@@ -20,6 +20,10 @@
  * 
  * @APPLE_LICENSE_HEADER_END@
  */
+
+#ifndef STUFF_MACOSX_DEPLOYMENT_TARGET_H
+#define STUFF_MACOSX_DEPLOYMENT_TARGET_H
+
 #include <mach/mach.h>
 
 struct macosx_deployment_target {
@@ -33,3 +37,5 @@ __private_extern__ void get_macosx_deployment_target(
 
 __private_extern__ void put_macosx_deployment_target(
     char *target);
+
+#endif /* STUFF_MACOSX_DEPLOYMENT_TARGET_H */

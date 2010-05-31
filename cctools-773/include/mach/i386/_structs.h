@@ -96,18 +96,14 @@ _STRUCT_FP_CONTROL
 				__precis	:1,
 						:2,
 				__pc		:2,
-#if !defined(_POSIX_C_SOURCE) || defined(_DARWIN_C_SOURCE)
 #define FP_PREC_24B		0
 #define	FP_PREC_53B		2
 #define FP_PREC_64B		3
-#endif /* !_POSIX_C_SOURCE || _DARWIN_C_SOURCE */
 				__rc		:2,
-#if !defined(_POSIX_C_SOURCE) || defined(_DARWIN_C_SOURCE)
 #define FP_RND_NEAR		0
 #define FP_RND_DOWN		1
 #define FP_RND_UP		2
 #define FP_CHOP			3
-#endif /* !_POSIX_C_SOURCE || _DARWIN_C_SOURCE */
 					/*inf*/	:1,
 						:3;
 };

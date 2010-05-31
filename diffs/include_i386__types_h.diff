@@ -1,0 +1,20 @@
+--- cctools.orig/include/i386/_types.h	2010-05-30 11:47:48.100902635 +0000
++++ cctools/include/i386/_types.h	2010-05-31 11:59:20.391657709 +0000
+@@ -69,6 +69,8 @@
+ 
+ typedef int			__darwin_ct_rune_t;	/* ct_rune_t */
+ 
++#define __mbstate_t __darwin_x_mbstate_t
++
+ /*
+  * mbstate_t is an opaque object to keep conversion state, during multibyte
+  * stream conversions.  The content must not be referenced by user programs.
+@@ -80,6 +82,8 @@
+ 
+ typedef __mbstate_t		__darwin_mbstate_t;	/* mbstate_t */
+ 
++#undef __mbstate_t
++
+ #if defined(__GNUC__) && defined(__PTRDIFF_TYPE__)
+ typedef __PTRDIFF_TYPE__	__darwin_ptrdiff_t;	/* ptr1 - ptr2 */
+ #else
