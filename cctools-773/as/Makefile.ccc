@@ -14,20 +14,13 @@ CFLAGS+= -fno-builtin-round
 CFLAGS+= -D_BSD_SOURCE
 CFLAGS+= -g3
 
-CFLAGS+= -DNeXT_MOD
-CFLAGS+= $(ASFLAGS)
-
 LDFLAGS= -L../libstuff -lstuff
 
 PRODUCT=as
 
-all: $(PRODUCT)
+all: $(PRODUCT) $(ASTARGETS)
 
-CFILES = app.c as.c atof-generic.c atof-ieee.c expr.c fixes.c flonum-const.c \
-         flonum-copy.c flonum-mult.c frags.c hash.c hex-value.c input-file.c \
-         input-scrub.c layout.c messages.c obstack.c read.c sections.c \
-         symbols.c write_object.c xmalloc.c dwarf2dbg.c \
-         $(ASTARGET)
+CFILES = driver.c
 OBJS = $(CFILES:.c=.o)
 
 %.o: %.c
@@ -36,10 +29,32 @@ OBJS = $(CFILES:.c=.o)
 as: $(OBJS)
 	$(CC) -m32 -o $@ $^ $(LDFLAGS)
 
+.PHONY: $(ASTARGETS)
+
+ppc:    ASFLAGS="-DPPC"
+ppc:    ASTARGET=ppc.c
+ppc64:  ASFLAGS="-DPPC -DARCH64"
+ppc64:  ASTARGET=ppc.c
+i386:   ASFLAGS="-DI386 -Di486 -Di586 -Di686"
+i386:   ASTARGET=i386.c
+x86_64: ASFLAGS="-DI386 -Di486 -Di586 -Di686 -DARCH64"
+x86_64: ASTARGET=i386.c
+arm:    ASFLAGS="-DARM"
+arm:    ASTARGET=arm.c
+
+$(ASTARGETS):
+	mkdir -p $@
+	cd $@ && make -f ../Makefile.arch ASFLAGS=$(ASFLAGS) ASTARGET=$(ASTARGET)
+
 clean distclean:
 	rm -f $(OBJS) $(PRODUCT)
+	rm -rf $(ASTARGETS)
 
 install:
 	mkdir -p $(DESTDIR)$(PREFIX)/bin
 	cp $(PRODUCT) $(DESTDIR)$(PREFIX)/bin/$(TARGET)-$(PRODUCT)
+	for TARGET in $(ASTARGETS); do \
+	    mkdir -p $(DESTDIR)$(PREFIX)/libexec/gcc/darwin/$$TARGET; \
+	    cp $$TARGET/$(PRODUCT) $(DESTDIR)$(PREFIX)/libexec/gcc/darwin/$$TARGET/$(PRODUCT); \
+	done
 

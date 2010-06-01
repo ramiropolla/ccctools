@@ -1,0 +1,43 @@
+include ../../../config.mak
+VPATH=${SP}/cctools/as
+
+CFLAGS = -I${SP}/cctools/include -I${SP}/cctools/as
+CFLAGS+= -D__LITTLE_ENDIAN__
+CFLAGS+= -D__private_extern__='__attribute__((visibility("hidden")))'
+CFLAGS+= -D__DARWIN_UNIX03=1
+CFLAGS+= -std=c99
+CFLAGS+= -D_XOPEN_SOURCE=600
+CFLAGS+= -Wno-deprecated-declarations
+CFLAGS+= -D_ISOC99_SOURCE
+CFLAGS+= -D_POSIX_C_SOURCE=200112
+CFLAGS+= -fno-builtin-round
+CFLAGS+= -D_BSD_SOURCE
+CFLAGS+= -g3
+
+CFLAGS+= -DNeXT_MOD
+CFLAGS+= $(ASFLAGS)
+
+LDFLAGS= -L../../libstuff -lstuff
+
+all: as
+
+CFILES = app.c as.c atof-generic.c atof-ieee.c expr.c fixes.c flonum-const.c \
+         flonum-copy.c flonum-mult.c frags.c hash.c hex-value.c input-file.c \
+         input-scrub.c layout.c messages.c obstack.c read.c sections.c \
+         symbols.c write_object.c xmalloc.c dwarf2dbg.c \
+         $(ASTARGET)
+OBJS = $(CFILES:.c=.o)
+
+%.o: %.c
+	$(CC) -m32 $(CPPFLAGS) $(CFLAGS) -c $< -o $@
+
+as: $(OBJS)
+	$(CC) -m32 -o $@ $^ $(LDFLAGS)
+
+clean distclean:
+	rm -f $(OBJS) $(PRODUCT)
+
+install:
+	mkdir -p $(DESTDIR)$(PREFIX)/bin
+	cp $(PRODUCT) $(DESTDIR)$(PREFIX)/bin/$(TARGET)-$(PRODUCT)
+
