@@ -17,7 +17,11 @@ Available options are:
 --cxx=*      Set CXX to be used
 --target=*   Set target arch, must be one of:
              ppc, ppc64, i686, x86_64, arm
+--prefix=*   Set install prefix
+
+NOTE: --target and --prefix *must* be set.
 EOF
+exit 1
 }
 
 for opt do
