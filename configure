@@ -10,6 +10,8 @@ SP=$(cd $(dirname $0) && pwd)
 # build path
 BP=$(pwd)
 
+X_CFLAGS=-O2
+
 print_help() {
 cat << EOF
 Available options are:
@@ -18,6 +20,7 @@ Available options are:
 --target=*   Set target arch, must be one of:
              ppc, ppc64, i686, x86_64, arm
 --prefix=*   Set install prefix
+--debug      Use -g3 and don't optimize [default is -O2]
 
 NOTE: --target and --prefix *must* be set.
 EOF
@@ -32,6 +35,9 @@ for opt do
     ;;
     --cc=*)
         CC=${optval}
+    ;;
+    --debug)
+        X_CFLAGS=-g3
     ;;
     --prefix=*)
         PREFIX=${optval}
@@ -123,6 +129,7 @@ echo CXX=${CXX}             >> config.mak
 echo TARGET=${TARGET}       >> config.mak
 echo PREFIX=${PREFIX}       >> config.mak
 echo ASTARGETS=${ASTARGETS} >> config.mak
+echo X_CFLAGS=${X_CFLAGS}   >> config.mak
 echo SP=${SP}               >> config.mak
 echo BP=${BP}               >> config.mak
 
