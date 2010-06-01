@@ -2460,11 +2460,18 @@ char *output)
 	 * using the modification time returned by stat.  Then write this into
 	 * all the ar_date's in the file.
 	 */
-	sprintf((char *)(&toc_ar_hdr), "%-*s%-*ld",
+{
+char tmp[sizeof(toc_ar_hdr)];
+struct ar_hdr *fakehdr = (struct ar_hdr *) tmp;
+	sprintf(tmp, "%-*s%-*ld",
 	   (int)sizeof(toc_ar_hdr.ar_name),
 	       SYMDEF,
 	   (int)sizeof(toc_ar_hdr.ar_date),
 	       (long int)stat_buf.st_mtime + 5);
+memcpy(toc_ar_hdr.ar_name, fakehdr->ar_name, sizeof(toc_ar_hdr.ar_name));
+memcpy(toc_ar_hdr.ar_date, fakehdr->ar_date, sizeof(toc_ar_hdr.ar_date));
+toc_ar_hdr.ar_uid[0] = '\0';
+}
 	for(i = 0; i < narchs; i++){
 	    if(lseek(fd, time_offsets[i], L_SET) == -1){
 		system_error("can't lseek in output file: %s", output);
