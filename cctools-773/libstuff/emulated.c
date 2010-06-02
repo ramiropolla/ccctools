@@ -92,28 +92,17 @@ kern_return_t vm_deallocate
   return 0;
 }
 
-kern_return_t map_fd(
-                     int fd,
-                     vm_offset_t offset,
-                     vm_offset_t *va,
-                     boolean_t findspace,
-                     vm_size_t size)
+kern_return_t map_fd(int fd, vm_offset_t offset, vm_offset_t *va,
+                     boolean_t findspace, vm_size_t size)
 {
+    void *addr = mmap(0, size, PROT_READ|PROT_WRITE, MAP_PRIVATE, fd, offset);
 
-  void *addr = NULL;
+    if (addr == (void *) -1)
+        return 1;
 
-#if 0
-  addr = mmap(0, size, PROT_READ|PROT_WRITE,
-	      MAP_PRIVATE|MAP_FILE, fd, offset);
-#endif
+    *va = (vm_offset_t) addr;
 
-  if(addr == (void *)-1) {
-    return 1;
-  }
-
-  *va = (vm_offset_t)addr;
-
-  return 0;
+    return KERN_SUCCESS;
 }
 
 void strmode(mode_t mode, char *bp)
